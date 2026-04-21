@@ -36,3 +36,6 @@ uploads/
 .env
 .env.local
 .env.*.local
+
+# Claude Code worktrees
+.claude/worktrees/
