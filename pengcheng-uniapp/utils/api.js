@@ -212,6 +212,9 @@ export const applyPrepay = (data) => post('/api/app/payment/prepay', data)
 /** 付款申请记录列表 */
 export const getPaymentList = (params) => get('/api/app/payment/list', params)
 
+/** 小程序真实支付下单 */
+export const createPaymentOrder = (data) => post('/api/app/pay/create', data)
+
 // ==================== 审批中心 ====================
 
 /** 待审批列表 */

@@ -39,6 +39,10 @@
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-wechat</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-pay</artifactId>
+        </dependency>
         <!-- 房产业务模块 -->
         <dependency>
             <groupId>com.pengcheng</groupId>

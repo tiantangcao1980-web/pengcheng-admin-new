@@ -189,6 +189,16 @@ public class PaymentService {
     }
 
     /**
+     * 按主键查询付款申请。
+     */
+    public PaymentRequest getPaymentRequestById(Long requestId) {
+        if (requestId == null) {
+            return null;
+        }
+        return paymentRequestMapper.selectById(requestId);
+    }
+
+    /**
      * 查询付款申请的审批记录
      */
     public List<PaymentApproval> getApprovalHistory(Long requestId) {
@@ -291,6 +301,39 @@ public class PaymentService {
         PaymentVO vo = PaymentVO.fromEntity(request);
         vo.setApprovals(getApprovalHistory(request.getId()));
         return vo;
+    }
+
+    /**
+     * 预下单成功后，把支付状态推进到“付款中”。
+     * 不覆盖已付款状态，避免下游重复创建订单时篡改结果。
+     */
+    @Transactional
+    public void markPaying(Long requestId, String payChannel) {
+        PaymentRequest request = paymentRequestMapper.selectById(requestId);
+        if (request == null) {
+            throw new IllegalArgumentException("付款申请不存在");
+        }
+        if (request.getPayStatus() != null && request.getPayStatus() == PAY_STATUS_PAID) {
+            return;
+        }
+        request.setPayStatus(PAY_STATUS_PAYING);
+        request.setPayChannel(payChannel);
+        paymentRequestMapper.updateById(request);
+    }
+
+    /**
+     * 生成对外支付标题，优先保留业务语义，便于支付平台侧排查。
+     */
+    public String buildPayDescription(PaymentRequest request) {
+        if (request == null) {
+            return "付款申请";
+        }
+        return switch (request.getRequestType() == null ? 0 : request.getRequestType()) {
+            case TYPE_EXPENSE -> "费用报销-" + request.getId();
+            case TYPE_ADVANCE_COMMISSION -> "垫佣申请-" + request.getId();
+            case TYPE_PREPAY_COMMISSION -> "预付佣申请-" + request.getId();
+            default -> "付款申请-" + request.getId();
+        };
     }
 
     // ==================== P0-1 支付通道回调 ====================

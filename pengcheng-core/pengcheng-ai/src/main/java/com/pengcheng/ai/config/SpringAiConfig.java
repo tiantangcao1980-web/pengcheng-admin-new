@@ -16,8 +16,8 @@ import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -51,10 +51,8 @@ public class SpringAiConfig {
                 .build();
     }
 
-    /** 无 DashScope Embedding 时的兜底 Bean，避免启动失败 */
-    @Bean
-    @ConditionalOnMissingBean(EmbeddingModel.class)
-    public EmbeddingModel fallbackEmbeddingModel() {
+    /** 无可用 EmbeddingModel 时，按需构造一个轻量兜底实现 */
+    private EmbeddingModel createFallbackEmbeddingModel() {
         return new EmbeddingModel() {
             @Override
             public EmbeddingResponse call(EmbeddingRequest request) {
@@ -88,7 +86,10 @@ public class SpringAiConfig {
 
     @Bean
     @ConditionalOnMissingBean(VectorStore.class)
-    public VectorStore fallbackVectorStore(EmbeddingModel embeddingModel) {
+    public VectorStore fallbackVectorStore(ObjectProvider<EmbeddingModel> embeddingModelProvider) {
+        EmbeddingModel embeddingModel = embeddingModelProvider.orderedStream()
+                .findFirst()
+                .orElseGet(this::createFallbackEmbeddingModel);
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 

@@ -33,7 +33,7 @@
 | P0-1.3 | 支付宝回调 Controller 从 temp-disabled 迁回并适配新签名 | pengcheng-admin-api | 1d | ✅ | [pay/AlipayNotifyController.java](../pengcheng-api/pengcheng-admin-api/src/main/java/com/pengcheng/admin/controller/pay/AlipayNotifyController.java) | 验签、幂等、失败重试 |
 | P0-1.4 | 微信支付回调 Controller 同上 | pengcheng-admin-api | 1d | ✅ | [pay/WechatPayNotifyController.java](../pengcheng-api/pengcheng-admin-api/src/main/java/com/pengcheng/admin/controller/pay/WechatPayNotifyController.java) |  |
 | P0-1.5 | 微信公众号登录回调 Controller 迁回（移除已废弃的 unionId 字段） | pengcheng-admin-api | 0.5d | ✅ | [auth/WechatMpAuthController.java](../pengcheng-api/pengcheng-admin-api/src/main/java/com/pengcheng/admin/controller/auth/WechatMpAuthController.java) |  |
-| P0-1.6 | 支付下单接口补全（当前 `AppPaymentController` 仅 CRUD） | pengcheng-app-api | 1.5d | ⬜ | `/app/pay/create` | 与回款计划 deal_id 关联 |
+| P0-1.6 | 支付下单接口补全（当前 `AppPaymentController` 仅 CRUD） | pengcheng-app-api | 1.5d | ✅ | [AppPayController.java](../pengcheng-api/pengcheng-app-api/src/main/java/com/pengcheng/app/controller/AppPayController.java) | `/app/pay/create` 复用 `payment_request.order_no` 与 `relatedDealId` |
 | P0-1.7 | 单元测试：订单缺失/重复支付/未审批/金额不一致/正常/幂等兜底/订单号格式 | test | 1d | ✅ | 7/7 全部通过 | `PaymentServiceUpdatePayStatusTest` |
 | P0-1.8 | 升级 Lombok 1.18.36 → 1.18.38（解决 JDK 17.0.18 兼容 bug） | pom | - | ✅ | 根 [pom.xml](../pom.xml):32 | 附带修复 |
 | P0-2.1 | 新建 DB 表 `receivable_plan` / `receivable_record` / `receivable_alert` | sql | 1d | ✅ | [V38__receivable.sql](../pengcheng-starter/src/main/resources/db/migration/V38__receivable.sql) | 与 customer_deal 1:N |
@@ -41,8 +41,8 @@
 | P0-2.3 | `ReceivableService`：createPlan / registerRecord / resolveStatus / runOverdueCheck / stats | pengcheng-realty | 2d | ✅ | [ReceivableService.java](../pengcheng-core/pengcheng-realty/src/main/java/com/pengcheng/realty/receivable/service/ReceivableService.java) | 含状态机 + 告警去重 |
 | P0-2.4 | `ReceivableController`：7 个 REST 端点 | pengcheng-admin-api | 1d | ✅ | [ReceivableController.java](../pengcheng-api/pengcheng-admin-api/src/main/java/com/pengcheng/admin/controller/realty/ReceivableController.java) | |
 | P0-2.5 | `AutomationScheduler` 加 `@Scheduled(cron="0 30 8 * * ?")` 回款逾期扫描 | pengcheng-admin-api/schedule | 0.5d | ✅ | [AutomationScheduler.java](../pengcheng-api/pengcheng-admin-api/src/main/java/com/pengcheng/admin/schedule/AutomationScheduler.java) | 每天 08:30 |
-| P0-2.6 | 前端 `views/realty/receivable/`：计划列表 / 回款登记 / 逾期看板 | pengcheng-ui | 3d | ⬜ | 3 个 .vue | Sprint 1 后半段 |
-| P0-2.7 | 前端 API 层 `api/realty/receivable.ts` | pengcheng-ui | 0.5d | ⬜ | | |
+| P0-2.6 | 前端 `views/realty/receivable/`：计划列表 / 回款登记 / 逾期看板 | pengcheng-ui | 3d | ✅ | [views/realty/receivable/**](../pengcheng-ui/src/views/realty/receivable/) | 路由 `/realty/receivable` 已接入 |
+| P0-2.7 | 前端 API 层 `api/realty/receivable.ts` | pengcheng-ui | 0.5d | ✅ | [api/receivable.ts](../pengcheng-ui/src/api/receivable.ts) | 受现有 `api/realty.ts` 文件占位影响，落地为独立 API 文件 |
 | P0-2.8 | 单元测试：逾期判定、分期对账、告警去重 | test | 1d | ✅ | `ReceivableServiceTest` 11/11 全绿 | |
 | P0-3.1 | 种子数据脚本：联盟商×3 / 项目×3 / 佣金规则×3 / 客户×4 / 到访×3 / 成交×1 / 回款计划×3 / 回款流水×1 | sql | 1d | ✅ | [V39__seed_demo.sql](../pengcheng-starter/src/main/resources/db/migration/V39__seed_demo.sql) | 全部 INSERT IGNORE，可重复执行 |
 | P0-3.2 | `README.md` 追加"开箱即用 Demo 数据"章节 | doc | 0.5d | ✅ | [README.md](../README.md):370 | 展示 P0-2 回款演示路径 |
@@ -57,7 +57,7 @@
 | P1-1.2 | 评估关系表复用 V33 已有 `kpi_review_relation` / `kpi_peer_review` → 新增 Entity + Mapper | pengcheng-hr | 0.5d | ✅ | [KpiReviewRelation.java](../pengcheng-core/pengcheng-hr/src/main/java/com/pengcheng/hr/performance/entity/KpiReviewRelation.java) / [KpiPeerReview.java](../pengcheng-core/pengcheng-hr/src/main/java/com/pengcheng/hr/performance/entity/KpiPeerReview.java) |
 | P1-1.3 | `KpiReview360Service:245` 权重配置落 `sys_config_group`（含合计=1 校验） | pengcheng-hr | 1d | ✅ | `getWeightConfig` / `updateWeightConfig` / `parseWeightConfigJson` |
 | P1-1.4 | `KpiReview360Service:286` 换 `StpUtil.getLoginIdAsLong()`（未登录抛 IllegalStateException） | pengcheng-hr | 0.5d | ✅ | `getCurrentUserId` 安全上下文读取 |
-| P1-1.5 | 前端 `Review360.vue` 对接任务分发、打分、汇总 | pengcheng-ui | 2d | ⬜ | Sprint 2 后半段 |
+| P1-1.5 | 前端 `Review360.vue` 对接任务分发、打分、汇总 | pengcheng-ui | 2d | ✅ | [Review360.vue](../pengcheng-ui/src/views/hr/Review360.vue) 任务分发/分页待办/结果汇总全部接通 |
 | P1-1.6 | 单元测试：四向任务生成 / 权重 JSON 读写 / 合计校验 / getCurrentUserId 未登录 | test | 1d | ✅ | `KpiReview360ServiceTest` 8/8 全绿 |
 | P1-2.1 | 抽象 `RuleActionHandler` SPI（Spring 收集所有实现） | automation/handler | 2d | ✅ | [RuleActionHandler.java](../pengcheng-core/pengcheng-system/src/main/java/com/pengcheng/system/automation/handler/RuleActionHandler.java) |
 | P1-2.2 | 4 个动作 Handler：notify（真实调 ChannelPushService）/ update_status（白名单校验防注入）/ assign / create_task | automation/handler | 3d | ✅ | NotifyActionHandler + UpdateStatusActionHandler + AssignActionHandler + CreateTaskActionHandler |
@@ -179,6 +179,7 @@
 | 2026-04-21 | P0-1.1 | ✅ | PaymentService.updatePayStatus + 幂等日志 + 5 种分支校验 | — |
 | 2026-04-21 | P0-1.7 | ✅ | PaymentServiceUpdatePayStatusTest 7 测试全绿 | — |
 | 2026-04-21 | P0-1.3 / 1.4 / 1.5 | ✅ | 3 Controller 迁回正式包，修复 Result.fail/unionId 漂移，BUILD SUCCESS | — |
+| 2026-04-21 | P0-1.6 | ✅ | 新增 `/app/pay/create`：基于已审批付款申请发起微信小程序预下单，复用 `payment_request.order_no`，返回 `timeStamp/nonceStr/package/paySign` 等支付参数 | — |
 | 2026-04-21 | P0-1.8 | ✅ | Lombok 1.18.36 → 1.18.38（JDK 17.0.18 兼容修复） | pom.xml |
 | 2026-04-21 | P0-2.1 | ✅ | V38__receivable.sql（3 表：plan/record/alert） | — |
 | 2026-04-21 | P0-2.2 | ✅ | 3 Entity + 3 Mapper + 3 DTO + 1 VO 落位 | — |
@@ -206,5 +207,9 @@
 | 2026-04-21 | P2-0.3 | ✅ | 全量 clean compile 14s + 34/34 测试零回归 | — |
 | 2026-04-21 | P2-1.1 | ✅ | PGVector starter `spring-ai-starter-vector-store-pgvector:1.0.0` 启用 + dev initialize-schema=false 默认关闭 | — |
 | 2026-04-21 | P2 小结 | 🎯 | Spring AI 1.1.x 全链路升版（P2-0.4~0.6/1.2~1.4/2/3）**延后到 P4 专项迭代**：适配成本 2~3 人日，当前无紧迫收益；Sprint 3 实际完成 Boot 3.3 + PGVector 准备 | — |
+| 2026-04-21 | P0-2.6 / P0-2.7 | ✅ | 回款前端闭环：新增 `api/receivable.ts`、`views/realty/receivable/` 三子视图、路由 `/realty/receivable`、计划创建/到账登记/逾期看板全部接通 | — |
+| 2026-04-21 | P1-1.5 | ✅ | `Review360.vue` 对接任务分发、分页待办、真实用户/周期展示、结果汇总；同步修复 `/review/360/pending` 未读取当前登录人导致待办为空的问题 | — |
+| 2026-04-21 | 验证 | ✅ | `pengcheng-ui` 构建通过；`pengcheng-admin-api` compile 通过 | — |
+| 2026-04-21 | 验证 | ⚠️ | `vue-tsc --noEmit` 仍被仓库既有 `RequestConfig/axios` 类型基线问题阻塞；`KpiReview360ServiceTest` 在当前 Homebrew JDK 17 环境下因 Mockito inline agent 无法自附着而失败 | — |
 
 > 开发者每完成一个任务，在本表末尾追加一行；同时把上表对应 # 的"状态"列从 ⬜ 改为 ✅。

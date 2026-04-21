@@ -22,6 +22,11 @@ public class PaymentVO {
 
     private Long id;
     private Long applicantId;
+    private String orderNo;
+    private String payChannel;
+    private String thirdTradeNo;
+    private Integer payStatus;
+    private LocalDateTime paidTime;
 
     /** 申请类型：1-费用报销 2-垫佣 3-预付佣 */
     private Integer requestType;
@@ -50,6 +55,11 @@ public class PaymentVO {
         return PaymentVO.builder()
                 .id(entity.getId())
                 .applicantId(entity.getApplicantId())
+                .orderNo(entity.getOrderNo())
+                .payChannel(entity.getPayChannel())
+                .thirdTradeNo(entity.getThirdTradeNo())
+                .payStatus(entity.getPayStatus())
+                .paidTime(entity.getPaidTime())
                 .requestType(entity.getRequestType())
                 .expenseType(entity.getExpenseType())
                 .amount(entity.getAmount())
