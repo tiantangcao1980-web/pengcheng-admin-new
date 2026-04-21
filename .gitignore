@@ -1,0 +1,38 @@
+# Node
+node_modules/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Maven
+target/
+**/target/
+**/.jqwik-database/
+**/.jqwik-database
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# uni-app build
+**/unpackage/
+
+# Env
+.env
+.env.local
+.env.*.local

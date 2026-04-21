@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '18'
+
+jobs:
+  backend-build:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test123456
+          MYSQL_DATABASE: pengcheng_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build with Maven
+        working-directory: pengcheng-admin
+        run: mvn clean package -DskipTests -B
+
+      - name: Run Tests
+        working-directory: pengcheng-admin
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: pengcheng_test
+          DB_USERNAME: root
+          DB_PASSWORD: test123456
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: mvn test -B
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pengcheng-admin-jar
+          path: pengcheng-admin/pengcheng-starter/target/*.jar
+          retention-days: 7
+
+  frontend-build:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: pengcheng-admin/pengcheng-ui/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: pengcheng-admin/pengcheng-ui
+        run: npm ci
+
+      - name: Lint
+        working-directory: pengcheng-admin/pengcheng-ui
+        run: npm run lint --if-present
+
+      - name: Type Check
+        working-directory: pengcheng-admin/pengcheng-ui
+        run: npm run type-check --if-present
+
+      - name: Build
+        working-directory: pengcheng-admin/pengcheng-ui
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pengcheng-ui-dist
+          path: pengcheng-admin/pengcheng-ui/dist
+          retention-days: 7
