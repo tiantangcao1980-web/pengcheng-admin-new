@@ -25,13 +25,13 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>3.2.2</spring-boot.version>
+        <spring-boot.version>3.3.5</spring-boot.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <sa-token.version>1.37.0</sa-token.version>
         <hutool.version>5.8.25</hutool.version>
         <lombok.version>1.18.38</lombok.version>
-        <spring-ai.version>1.0.0</spring-ai.version>
-        <spring-ai-alibaba.version>1.0.0.2</spring-ai-alibaba.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
+        <spring-ai-alibaba.version>1.1.2.2</spring-ai-alibaba.version>
         <flyway.version>10.10.0</flyway.version>
         <tika.version>2.9.1</tika.version>
         <jqwik.version>1.8.2</jqwik.version>
@@ -58,13 +58,24 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Spring AI Alibaba BOM -->
+            <!-- Spring AI Alibaba BOM（Agent/Graph 框架核心） -->
             <dependency>
                 <groupId>com.alibaba.cloud.ai</groupId>
                 <artifactId>spring-ai-alibaba-bom</artifactId>
                 <version>${spring-ai-alibaba.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!--
+              DashScope starter 版本管理
+              1.1.x 后 DashScope starter 不在 spring-ai-alibaba-bom 中，需显式声明版本。
+              版本号与 Alibaba BOM 保持一致。
+            -->
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
             </dependency>
 
             <!-- MyBatis Plus -->

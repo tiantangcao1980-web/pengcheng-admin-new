@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.hr;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pengcheng.common.result.Result;
@@ -55,12 +56,14 @@ public class HrKpiController {
     }
 
     @PostMapping("/periods")
+    @SaCheckPermission("hr:kpi:period")
     @Log(title = "考核周期", businessType = BusinessType.INSERT)
     public Result<Long> createPeriod(@RequestBody KpiPeriod period) {
         return Result.ok(kpiPeriodService.create(period));
     }
 
     @PutMapping("/periods")
+    @SaCheckPermission("hr:kpi:period")
     @Log(title = "考核周期", businessType = BusinessType.UPDATE)
     public Result<Void> updatePeriod(@RequestBody KpiPeriod period) {
         kpiPeriodService.update(period);
@@ -68,6 +71,7 @@ public class HrKpiController {
     }
 
     @DeleteMapping("/periods/{id}")
+    @SaCheckPermission("hr:kpi:period")
     @Log(title = "考核周期", businessType = BusinessType.DELETE)
     public Result<Void> deletePeriod(@PathVariable Long id) {
         kpiPeriodService.delete(id);
@@ -95,12 +99,14 @@ public class HrKpiController {
     }
 
     @PostMapping("/templates")
+    @SaCheckPermission("hr:kpi:template")
     @Log(title = "KPI模板", businessType = BusinessType.INSERT)
     public Result<Long> createTemplate(@RequestBody KpiTemplate template) {
         return Result.ok(kpiTemplateService.create(template));
     }
 
     @PutMapping("/templates")
+    @SaCheckPermission("hr:kpi:template")
     @Log(title = "KPI模板", businessType = BusinessType.UPDATE)
     public Result<Void> updateTemplate(@RequestBody KpiTemplate template) {
         kpiTemplateService.update(template);
@@ -108,6 +114,7 @@ public class HrKpiController {
     }
 
     @DeleteMapping("/templates/{id}")
+    @SaCheckPermission("hr:kpi:template")
     @Log(title = "KPI模板", businessType = BusinessType.DELETE)
     public Result<Void> deleteTemplate(@PathVariable Long id) {
         kpiTemplateService.delete(id);
@@ -131,6 +138,7 @@ public class HrKpiController {
     }
 
     @PostMapping("/scores")
+    @SaCheckPermission("hr:kpi:score")
     @Log(title = "考核记录", businessType = BusinessType.UPDATE)
     public Result<Void> saveScore(@RequestBody KpiScore score) {
         kpiScoreService.saveOrUpdate(score);
@@ -138,6 +146,7 @@ public class HrKpiController {
     }
 
     @PostMapping("/scores/batch")
+    @SaCheckPermission("hr:kpi:score")
     @Log(title = "考核记录", businessType = BusinessType.UPDATE)
     public Result<Void> saveScoreBatch(
             @RequestParam Long periodId,
@@ -151,6 +160,7 @@ public class HrKpiController {
 
     @Operation(summary = "创建/更新 360 度评估", description = "支持自评、上级、同事、下级多维度评估")
     @PostMapping("/review/360")
+    @SaCheckPermission("hr:review360:submit")
     @Log(title = "360 度评估", businessType = BusinessType.INSERT)
     public Result<Long> createReview(@RequestBody KpiReview360DTO dto) {
         return Result.ok(kpiReview360Service.createOrUpdateReview(dto));
@@ -180,6 +190,7 @@ public class HrKpiController {
 
     @Operation(summary = "更新权重配置", description = "更新 360 度评估各维度权重配置")
     @PostMapping("/review/360/config")
+    @SaCheckPermission("hr:review360:config")
     @Log(title = "360 度评估配置", businessType = BusinessType.UPDATE)
     public Result<Void> updateWeightConfig(@RequestBody Kpi360WeightConfig config) {
         kpiReview360Service.updateWeightConfig(config);
@@ -188,6 +199,7 @@ public class HrKpiController {
 
     @Operation(summary = "批量创建评估任务", description = "为周期内所有用户创建 360 度评估任务")
     @PostMapping("/review/360/tasks")
+    @SaCheckPermission("hr:review360:task")
     @Log(title = "360 度评估任务", businessType = BusinessType.INSERT)
     public Result<Integer> createReviewTasks(
             @RequestParam Long periodId,

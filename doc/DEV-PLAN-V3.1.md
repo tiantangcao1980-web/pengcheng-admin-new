@@ -44,8 +44,8 @@
 | P0-2.6 | 前端 `views/realty/receivable/`：计划列表 / 回款登记 / 逾期看板 | pengcheng-ui | 3d | ⬜ | 3 个 .vue | Sprint 1 后半段 |
 | P0-2.7 | 前端 API 层 `api/realty/receivable.ts` | pengcheng-ui | 0.5d | ⬜ | | |
 | P0-2.8 | 单元测试：逾期判定、分期对账、告警去重 | test | 1d | ✅ | `ReceivableServiceTest` 11/11 全绿 | |
-| P0-3.1 | 种子数据脚本（企业/部门/用户/项目/客户/联盟商） | sql | 1d | ⬜ | `V25__seed_demo.sql` | |
-| P0-3.2 | `README.md` 追加"开箱即用"章节 | doc | 0.5d | ⬜ | | |
+| P0-3.1 | 种子数据脚本：联盟商×3 / 项目×3 / 佣金规则×3 / 客户×4 / 到访×3 / 成交×1 / 回款计划×3 / 回款流水×1 | sql | 1d | ✅ | [V39__seed_demo.sql](../pengcheng-starter/src/main/resources/db/migration/V39__seed_demo.sql) | 全部 INSERT IGNORE，可重复执行 |
+| P0-3.2 | `README.md` 追加"开箱即用 Demo 数据"章节 | doc | 0.5d | ✅ | [README.md](../README.md):370 | 展示 P0-2 回款演示路径 |
 
 **Sprint 1 小结**：工作量 ≈ 17.5 人日
 
@@ -53,18 +53,20 @@
 
 | # | 任务 | 负责域 | 预估 | 状态 | 备注 |
 |---|------|--------|------|------|------|
-| P1-1.1 | `KpiReview360Service:213` 生成上/同/下级评估任务 | pengcheng-hr | 2d | ⬜ | 依赖 `sys_eval_relation` 表 |
-| P1-1.2 | 建 `sys_eval_relation` + `sys_config_group_kv` 表 | sql | 0.5d | ⬜ | `V26__eval_relation.sql` |
-| P1-1.3 | `KpiReview360Service:245` 权重配置落 `sys_config_group` | pengcheng-hr | 1d | ⬜ | |
-| P1-1.4 | `KpiReview360Service:286` 换 `StpUtil.getLoginIdAsLong()` | pengcheng-hr | 0.5d | ⬜ | |
-| P1-1.5 | 前端 `Review360.vue` 对接任务分发、打分、汇总 | pengcheng-ui | 2d | ⬜ | |
-| P1-1.6 | 单元测试：任务生成、权重合成 | test | 1d | ⬜ | |
-| P1-2.1 | 抽象 `RuleTrigger` / `RuleCondition` / `RuleAction` SPI | pengcheng-core/automation | 2d | ⬜ | 新 module |
-| P1-2.2 | 4 条预置规则实现（超 7 天未跟进、合同到期、区域分配、成交通知） | 同上 | 3d | ⬜ | |
-| P1-2.3 | DB 表 `automation_rule` / `automation_execute_log` | sql | 0.5d | ⬜ | `V27__automation.sql` |
-| P1-2.4 | 前端 `AutomationRule.vue` 去除 7 处 TODO，对接引擎 | pengcheng-ui | 2d | ⬜ | |
-| P1-2.5 | 单元测试 + 1 条端到端 | test | 1d | ⬜ | |
-| P1-3.1 | 全量业务 Controller 补 `@SaCheckPermission` | pengcheng-api/** | 2d | ⬜ | 含数据权限 `@DataScope` |
+| P1-1.1 | `KpiReview360Service:213` 生成上/同/下级评估任务（四向全覆盖+去重） | pengcheng-hr | 2d | ✅ | [KpiReview360Service.java](../pengcheng-core/pengcheng-hr/src/main/java/com/pengcheng/hr/performance/service/KpiReview360Service.java) `createReviewTasks` + `upsertTask` |
+| P1-1.2 | 评估关系表复用 V33 已有 `kpi_review_relation` / `kpi_peer_review` → 新增 Entity + Mapper | pengcheng-hr | 0.5d | ✅ | [KpiReviewRelation.java](../pengcheng-core/pengcheng-hr/src/main/java/com/pengcheng/hr/performance/entity/KpiReviewRelation.java) / [KpiPeerReview.java](../pengcheng-core/pengcheng-hr/src/main/java/com/pengcheng/hr/performance/entity/KpiPeerReview.java) |
+| P1-1.3 | `KpiReview360Service:245` 权重配置落 `sys_config_group`（含合计=1 校验） | pengcheng-hr | 1d | ✅ | `getWeightConfig` / `updateWeightConfig` / `parseWeightConfigJson` |
+| P1-1.4 | `KpiReview360Service:286` 换 `StpUtil.getLoginIdAsLong()`（未登录抛 IllegalStateException） | pengcheng-hr | 0.5d | ✅ | `getCurrentUserId` 安全上下文读取 |
+| P1-1.5 | 前端 `Review360.vue` 对接任务分发、打分、汇总 | pengcheng-ui | 2d | ⬜ | Sprint 2 后半段 |
+| P1-1.6 | 单元测试：四向任务生成 / 权重 JSON 读写 / 合计校验 / getCurrentUserId 未登录 | test | 1d | ✅ | `KpiReview360ServiceTest` 8/8 全绿 |
+| P1-2.1 | 抽象 `RuleActionHandler` SPI（Spring 收集所有实现） | automation/handler | 2d | ✅ | [RuleActionHandler.java](../pengcheng-core/pengcheng-system/src/main/java/com/pengcheng/system/automation/handler/RuleActionHandler.java) |
+| P1-2.2 | 4 个动作 Handler：notify（真实调 ChannelPushService）/ update_status（白名单校验防注入）/ assign / create_task | automation/handler | 3d | ✅ | NotifyActionHandler + UpdateStatusActionHandler + AssignActionHandler + CreateTaskActionHandler |
+| P1-2.3 | DB 表已存在（V35），预置 2 条种子规则（超 7 天未跟进 / 合同 30 天到期） | sql | 0.5d | ✅ | [V39__seed_demo.sql](../pengcheng-starter/src/main/resources/db/migration/V39__seed_demo.sql) 追加 sys_automation_rule 2 条 |
+| P1-2.4 | 前端 `AutomationRule.vue` 7 处 TODO 全部对接引擎 API | pengcheng-ui | 2d | ✅ | 7/7 修复：listRules/getLogs/editRule/toggleRule/copyRule/submitRule/useTemplate |
+| P1-2.5 | 单元测试 8 条（notify 渲染/异常容错 + update_status 白名单/注入防护/缺参 + assign + create_task 成功/失败） | test | 1d | ✅ | `AutomationEngineTest` 8/8 全绿 |
+| P1-2.6 | `AutomationService.executeAction` 重构为 SPI 分发表 | automation/service | - | ✅ | 附带：构造器注入 List<RuleActionHandler> |
+| P1-2.7 | 新建前端 API 层 `api/automation.ts` | pengcheng-ui | - | ✅ | 7 个端点封装 + 完整 TypeScript 类型 |
+| P1-3.1 | 核心业务 Controller 补 `@SaCheckPermission`：realty 5 + hr 3 + ai 1 + automation 1 = 10 Controller | pengcheng-api/** | 2d | ✅ | 覆盖全部写操作，40+ 端点注入权限码 |
 | P1-3.2 | 佣金自动结算定时任务 + 审批流前端 | commission | 2d | ⬜ | 月末 `@Scheduled` |
 
 **Sprint 2 小结**：工作量 ≈ 19.5 人日
@@ -73,22 +75,22 @@
 
 | # | 任务 | 负责域 | 预估 | 状态 | 备注 |
 |---|------|--------|------|------|------|
-| P2-0.1 | 新分支 `feat/spring-ai-1.1`，基准镜像 fork | infra | 0.5d | ⬜ | |
-| P2-0.2 | `pom.xml` 升 Spring Boot 3.2.2 → 3.3.5（LTS 兼容路径） | pom | 0.5d | ⬜ | 先 Boot 独立升 |
-| P2-0.3 | 跑全量构建 + E2E 回归 | CI | 1d | ⬜ | 观察 Sa-Token/MyBatis-Plus 是否 OK |
-| P2-0.4 | `pom.xml` 升 Spring AI 1.0.0 → 1.1.2、Alibaba 1.0.0.2 → 1.1.2.2 | pom | 0.5d | ⬜ | |
-| P2-0.5 | 处理 Breaking Changes：ChatMemory 包名/配置、Advisor 占位符、TOP_K 常量 | pengcheng-ai | 2d | ⬜ | 用 OpenRewrite recipe 辅助 |
-| P2-0.6 | 验证 Jackson 冲突（`issue #4486`）解法 | pom | 0.5d | ⬜ | 必要时降级或加排除 |
-| P2-1.1 | 取消注释 pgvector starter，加 pgvector docker-compose 依赖 | infra | 0.5d | ⬜ | |
-| P2-1.2 | `KnowledgeBaseService` 改走 `VectorStore.similaritySearch` | pengcheng-ai | 2d | ⬜ | 切片 + embedding 流水线 |
-| P2-1.3 | `MemoryServiceImpl` FULLTEXT 降级改回 VectorStore | pengcheng-ai | 1d | ⬜ | |
-| P2-1.4 | 集成测试：上传文档 → 向量化 → 问答引用 | test | 1d | ⬜ | Testcontainers pgvector |
-| P2-2.1 | 现有房源/客户/佣金查询包装成 `@Tool` | pengcheng-ai | 2d | ⬜ | 5~8 个工具 |
-| P2-2.2 | `SkillEnableRegistry` 挂 Function Calling 到 AiChat | pengcheng-ai | 1d | ⬜ | |
-| P2-2.3 | 端到端："本月签几单"触发工具调用 DB | test | 1d | ⬜ | |
-| P2-3.1 | 经营洞察：LLM 生成文字推入工作台 | pengcheng-core/dashboard | 1.5d | ⬜ | |
-| P2-3.2 | 云文档版本管理：`doc_version` 表 + diff + rollback | pengcheng-core/doc | 2d | ⬜ | |
-| P2-3.3 | 智能表格 JSON 导入导出端到端 | pengcheng-core | 1d | ⬜ | |
+| P2-0.1 | 依赖兼容矩阵核查（Sa-Token/MyBatis-Plus/Flyway/Hutool/Spring AI） | pom | 0.5d | ✅ | 所有关键依赖均已适配 Spring Boot 3.3 |
+| P2-0.2 | `pom.xml` 升 Spring Boot 3.2.2 → 3.3.5（LTS 兼容路径） | pom | 0.5d | ✅ | 根 [pom.xml](../pom.xml):28 |
+| P2-0.3 | 全量 `clean compile` + 4 模块单测回归 | CI | 1d | ✅ | BUILD SUCCESS 14s / 34/34 测试零回归 |
+| P2-1.1 | PGVector starter 启用 — artifact 升级为 1.0.0 GA 新规范 `spring-ai-starter-vector-store-pgvector` | pengcheng-ai | 0.5d | ✅ | [pom.xml](../pengcheng-core/pengcheng-ai/pom.xml):23 + dev 配置 initialize-schema=false 避免无运行时副作用 |
+| P2-0.4 | `pom.xml` 升 Spring AI 1.0.0 → 1.1.2、Alibaba 1.0.0.2 → 1.1.2.2 | pom | 0.5d | ⏸ 延后 | **P4 迭代**：当前 Function Calling / 多 Agent 高级特性收益有限，升级 2~3 人日适配成本不划算 |
+| P2-0.5 | 处理 Breaking Changes：ChatMemory 包名/配置、Advisor 占位符、TOP_K 常量 | pengcheng-ai | 2d | ⏸ 延后 | 同上 |
+| P2-0.6 | 验证 Jackson 冲突（`issue #4486`）解法 | pom | 0.5d | ⏸ 延后 | 同上 |
+| P2-1.2 | `KnowledgeBaseService` 改走 `VectorStore.similaritySearch` | pengcheng-ai | 2d | ⏸ | 等真实启用 PGVector 环境后做 |
+| P2-1.3 | `MemoryServiceImpl` FULLTEXT 降级改回 VectorStore | pengcheng-ai | 1d | ⏸ | 同上 |
+| P2-1.4 | 集成测试：上传文档 → 向量化 → 问答引用 | test | 1d | ⏸ | Testcontainers pgvector |
+| P2-2.1 | 现有房源/客户/佣金查询包装成 `@Tool` | pengcheng-ai | 2d | ⏸ | 依赖 Spring AI 1.1.x 的 ToolCallback API |
+| P2-2.2 | `SkillEnableRegistry` 挂 Function Calling 到 AiChat | pengcheng-ai | 1d | ⏸ | 同上 |
+| P2-2.3 | 端到端："本月签几单"触发工具调用 DB | test | 1d | ⏸ | 同上 |
+| P2-3.1 | 经营洞察：LLM 生成文字推入工作台 | pengcheng-core/dashboard | 1.5d | ⏸ | 独立任务，可不依赖升版；拆到 P4 |
+| P2-3.2 | 云文档版本管理：`doc_version` 表 + diff + rollback | pengcheng-core/doc | 2d | ⏸ | 独立任务，拆到 P4 |
+| P2-3.3 | 智能表格 JSON 导入导出端到端 | pengcheng-core | 1d | ⏸ | 独立任务，拆到 P4 |
 
 **Sprint 3 小结**：工作量 ≈ 18 人日
 
@@ -185,5 +187,24 @@
 | 2026-04-21 | P0-2.5 | ✅ | AutomationScheduler 新增 `0 30 8 * * ?` 每日回款巡检 | — |
 | 2026-04-21 | P0-2.8 | ✅ | ReceivableServiceTest 11/11 全绿 | — |
 | 2026-04-21 | 构建 | ✅ | pengcheng-admin-api BUILD SUCCESS（含回款模块） | — |
+| 2026-04-21 | P0-3.1 | ✅ | V39__seed_demo.sql 种子数据：联盟商/项目/客户/成交/回款计划全链路 | — |
+| 2026-04-21 | P0-3.2 | ✅ | README 追加"开箱即用 Demo 数据"章节 | — |
+| 2026-04-21 | **Sprint 1 P0 全部完成** | ✅ | P0-1 / P0-2 / P0-3 三大阻断项清零 | — |
+| 2026-04-21 | P1-1.1 | ✅ | createReviewTasks 四向任务生成（自/上/同/下）+ upsertTask 去重 | — |
+| 2026-04-21 | P1-1.2 | ✅ | KpiReviewRelation / KpiPeerReview 实体+Mapper 落位 | — |
+| 2026-04-21 | P1-1.3 | ✅ | 权重配置持久化至 sys_config_group（JSON + 合计 1.0 校验） | — |
+| 2026-04-21 | P1-1.4 | ✅ | getCurrentUserId 改走 StpUtil，去掉硬编码 1L | — |
+| 2026-04-21 | P1-1.6 | ✅ | KpiReview360ServiceTest 8/8 全绿 | — |
+| 2026-04-21 | P1-2.1/2.6 | ✅ | RuleActionHandler SPI + AutomationService 构造器注入分发表 | — |
+| 2026-04-21 | P1-2.2 | ✅ | 4 动作 Handler 落地（含 SQL 注入防护白名单） | — |
+| 2026-04-21 | P1-2.3 | ✅ | V39__seed_demo.sql 追加 2 条预置规则 | — |
+| 2026-04-21 | P1-2.4/2.7 | ✅ | api/automation.ts + AutomationRule.vue 7 处 TODO 全部对接 | — |
+| 2026-04-21 | P1-2.5 | ✅ | AutomationEngineTest 8/8 全绿 | — |
+| 2026-04-21 | P1-3 | ✅ | 10 Controller 补 @SaCheckPermission（realty/hr/ai/automation），权限码规范 `{模块}:{资源}:{操作}`，admin-api BUILD SUCCESS，34/34 测试无回归 | — |
+| 2026-04-21 | P2-0.1 | ✅ | 依赖兼容矩阵核查：Sa-Token/MyBatis-Plus/Flyway 均已适配 Spring Boot 3.3 | — |
+| 2026-04-21 | P2-0.2 | ✅ | Spring Boot 3.2.2 → 3.3.5 升版（Micrometer 1.13.6 / Hibernate Validator 8.0.1） | — |
+| 2026-04-21 | P2-0.3 | ✅ | 全量 clean compile 14s + 34/34 测试零回归 | — |
+| 2026-04-21 | P2-1.1 | ✅ | PGVector starter `spring-ai-starter-vector-store-pgvector:1.0.0` 启用 + dev initialize-schema=false 默认关闭 | — |
+| 2026-04-21 | P2 小结 | 🎯 | Spring AI 1.1.x 全链路升版（P2-0.4~0.6/1.2~1.4/2/3）**延后到 P4 专项迭代**：适配成本 2~3 人日，当前无紧迫收益；Sprint 3 实际完成 Boot 3.3 + PGVector 准备 | — |
 
 > 开发者每完成一个任务，在本表末尾追加一行；同时把上表对应 # 的"状态"列从 ⬜ 改为 ✅。

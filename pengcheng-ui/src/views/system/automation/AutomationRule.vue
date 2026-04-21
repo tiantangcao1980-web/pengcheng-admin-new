@@ -174,6 +174,24 @@ import { ref, reactive, h, onMounted } from 'vue'
 import { NButton, NTag, NSpace, NIcon, useMessage, type DataTableColumns } from 'naive-ui'
 import { PlayOutline, StopOutline, CopyOutline } from '@vicons/ionicons5'
 import { request } from '@/utils/request'
+import { automationApi, type AutomationRuleDTO } from '@/api/automation'
+
+/** 后端 DTO → 前端 Rule 视图模型适配 */
+function adaptRule(dto: AutomationRuleDTO): Rule {
+  const module = (dto.triggerConfig?.target_table as string) || 'custom'
+  return {
+    id: dto.id ?? 0,
+    name: dto.name,
+    description: dto.description ?? '',
+    module,
+    eventType: dto.triggerType,
+    enabled: dto.enabled ?? true,
+    priority: dto.priority ?? 100,
+    executeCount: dto.triggerCount ?? 0,
+    lastExecuteTime: dto.lastTriggeredAt ?? '',
+    _raw: dto
+  } as any
+}
 
 interface Rule {
   id: number
@@ -359,20 +377,43 @@ function getFieldOptions(module: string) {
 
 function loadRules() {
   rulesLoading.value = true
-  // TODO: 调用 API 获取规则列表
-  setTimeout(() => {
-    rules.value = []
-    rulesLoading.value = false
-  }, 500)
+  automationApi.listRules()
+    .then((list) => {
+      const arr = Array.isArray(list) ? list : []
+      const mapped = arr.map(adaptRule)
+      rules.value = ruleFilter.enabled === null
+        ? mapped
+        : mapped.filter((r) => r.enabled === ruleFilter.enabled)
+      rulePagination.itemCount = rules.value.length
+    })
+    .catch(() => { rules.value = [] })
+    .finally(() => { rulesLoading.value = false })
 }
 
 function loadLogs() {
   logsLoading.value = true
-  // TODO: 调用 API 获取日志列表
-  setTimeout(() => {
+  const ruleId = logFilter.ruleId
+  if (!ruleId) {
     logs.value = []
     logsLoading.value = false
-  }, 500)
+    return
+  }
+  automationApi.getRuleLogs(ruleId, 50)
+    .then((list) => {
+      const arr = Array.isArray(list) ? list : []
+      logs.value = arr.map((l) => ({
+        id: l.id,
+        ruleId: l.ruleId,
+        ruleName: `#${l.ruleId}`,
+        executeResult: l.status,
+        errorMessage: l.status === 0 ? (l.actionResult ?? '') : '',
+        executeTime: l.executedAt,
+        executeDuration: 0
+      }))
+      logPagination.itemCount = logs.value.length
+    })
+    .catch(() => { logs.value = [] })
+    .finally(() => { logsLoading.value = false })
 }
 
 function resetFilter() {
@@ -404,18 +445,41 @@ function editRule(row: Rule) {
   ruleForm.eventType = row.eventType
   ruleForm.enabled = row.enabled
   ruleForm.priority = row.priority
-  // TODO: 加载条件和动作
+  // 从原始 DTO 中还原条件/动作（actionConfig/triggerConfig → 表单项）
+  const raw = (row as any)._raw as AutomationRuleDTO | undefined
+  ruleForm.conditions = []
+  ruleForm.actions = raw?.actionType
+    ? [{ type: raw.actionType, params: raw.actionConfig ?? {} }]
+    : []
   showRuleForm.value = true
 }
 
 function toggleRule(row: Rule) {
-  // TODO: 调用 API 切换规则状态
-  message.success(row.enabled ? '规则已禁用' : '规则已启用')
+  const next = !row.enabled
+  automationApi.toggleRule(row.id, next)
+    .then(() => {
+      message.success(next ? '规则已启用' : '规则已禁用')
+      loadRules()
+    })
+    .catch(() => { message.error('切换失败') })
 }
 
 function copyRule(row: Rule) {
-  // TODO: 复制规则
-  message.success('规则已复制到剪贴板')
+  const raw = (row as any)._raw as AutomationRuleDTO | undefined
+  if (!raw) { message.error('规则数据缺失，无法复制'); return }
+  const clone: AutomationRuleDTO = {
+    name: row.name + ' - 副本',
+    description: row.description,
+    triggerType: raw.triggerType,
+    triggerConfig: raw.triggerConfig,
+    actionType: raw.actionType,
+    actionConfig: raw.actionConfig,
+    enabled: false,
+    priority: raw.priority
+  }
+  automationApi.createRule(clone)
+    .then(() => { message.success('规则已复制（默认停用，请确认后启用）'); loadRules() })
+    .catch(() => { message.error('复制失败') })
 }
 
 function addCondition() {
@@ -440,19 +504,42 @@ function submitRule() {
     return
   }
   submitting.value = true
-  // TODO: 调用 API 保存规则
-  setTimeout(() => {
-    message.success('规则已保存')
-    showRuleForm.value = false
-    submitting.value = false
-    loadRules()
-  }, 500)
+  const firstAction = ruleForm.actions[0] ?? { type: 'notify', params: {} }
+  const dto: AutomationRuleDTO = {
+    id: ruleForm.id ?? undefined,
+    name: ruleForm.name,
+    description: ruleForm.description,
+    triggerType: ruleForm.eventType,
+    triggerConfig: { target_table: ruleForm.module },
+    actionType: firstAction.type,
+    actionConfig: firstAction.params,
+    enabled: ruleForm.enabled,
+    priority: ruleForm.priority
+  }
+  const call = dto.id
+    ? automationApi.updateRule(dto)
+    : automationApi.createRule(dto).then(() => undefined)
+  call
+    .then(() => {
+      message.success('规则已保存')
+      showRuleForm.value = false
+      loadRules()
+    })
+    .catch(() => { message.error('保存失败') })
+    .finally(() => { submitting.value = false })
 }
 
 function useTemplate(template: any) {
-  // TODO: 使用模板创建规则
-  message.success(`已选择模板：${template.name}`)
   openRuleForm()
+  ruleForm.name = template.name
+  ruleForm.description = template.description
+  // 模板分组映射到 module
+  const moduleMap: Record<string, string> = {
+    '客户管理': 'customer', '会议日程': 'meeting', '人事管理': 'hr', '财务管理': 'finance'
+  }
+  ruleForm.module = moduleMap[template.module] ?? ''
+  ruleForm.eventType = 'time_based'
+  message.success(`已套用模板：${template.name}，请调整后保存`)
 }
 
 onMounted(() => {

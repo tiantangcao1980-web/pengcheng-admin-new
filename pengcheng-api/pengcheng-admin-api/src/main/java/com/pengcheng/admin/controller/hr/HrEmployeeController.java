@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.hr;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pengcheng.common.result.Result;
@@ -29,6 +30,7 @@ public class HrEmployeeController {
     }
 
     @PutMapping("/profile")
+    @SaCheckPermission("hr:employee:edit")
     @Log(title = "员工档案", businessType = BusinessType.UPDATE)
     public Result<Void> saveProfile(@RequestBody EmployeeProfile profile) {
         employeeProfileService.saveOrUpdate(profile);
@@ -52,12 +54,14 @@ public class HrEmployeeController {
     }
 
     @PostMapping("/changes")
+    @SaCheckPermission("hr:employee:change")
     @Log(title = "人事异动", businessType = BusinessType.INSERT)
     public Result<Long> createChange(@RequestBody EmployeeChange change) {
         return Result.ok(employeeChangeService.create(change));
     }
 
     @PostMapping("/changes/{id}/effective")
+    @SaCheckPermission("hr:employee:change")
     @Log(title = "人事异动生效", businessType = BusinessType.UPDATE)
     public Result<Void> setChangeEffective(@PathVariable Long id) {
         employeeChangeService.setEffective(id);

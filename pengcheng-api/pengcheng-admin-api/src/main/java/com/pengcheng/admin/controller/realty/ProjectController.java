@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.realty;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.pengcheng.common.result.PageResult;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.realty.project.dto.ProjectCommissionRuleDTO;
@@ -29,6 +30,7 @@ public class ProjectController {
      * 分页查询项目列表
      */
     @GetMapping("/page")
+    @SaCheckPermission("realty:project:list")
     public Result<PageResult<ProjectVO>> page(ProjectQueryDTO query) {
         return Result.ok(projectService.pageProjects(query));
     }
@@ -37,6 +39,7 @@ public class ProjectController {
      * 获取项目详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("realty:project:list")
     public Result<ProjectVO> detail(@PathVariable Long id) {
         return Result.ok(projectService.getProject(id));
     }
@@ -45,6 +48,7 @@ public class ProjectController {
      * 创建项目
      */
     @PostMapping("/create")
+    @SaCheckPermission("realty:project:add")
     @Log(title = "项目管理", businessType = BusinessType.INSERT)
     public Result<Long> create(@RequestBody ProjectCreateDTO dto) {
         return Result.ok(projectService.createProject(dto));
@@ -54,6 +58,7 @@ public class ProjectController {
      * 编辑项目
      */
     @PutMapping("/update")
+    @SaCheckPermission("realty:project:edit")
     @Log(title = "项目管理", businessType = BusinessType.UPDATE)
     public Result<Void> update(@RequestBody ProjectCreateDTO dto) {
         projectService.updateProject(dto);
@@ -64,6 +69,7 @@ public class ProjectController {
      * 录入/更新佣金规则
      */
     @PostMapping("/commission-rule")
+    @SaCheckPermission("realty:project:rule")
     @Log(title = "佣金规则", businessType = BusinessType.INSERT)
     public Result<Long> saveCommissionRule(@RequestBody ProjectCommissionRuleDTO dto) {
         return Result.ok(projectService.saveCommissionRule(dto));
@@ -73,6 +79,7 @@ public class ProjectController {
      * 审批佣金规则
      */
     @PostMapping("/commission-rule/approve")
+    @SaCheckPermission("realty:project:ruleApprove")
     @Log(title = "佣金规则审批", businessType = BusinessType.UPDATE)
     public Result<Void> approveCommissionRule(@RequestParam Long ruleId,
                                               @RequestParam boolean approved) {

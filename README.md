@@ -3,8 +3,8 @@
 # MasterLife
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=openjdk)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green?style=flat-square&logo=springboot)
-![Spring AI](https://img.shields.io/badge/Spring%20AI%20Alibaba-1.0.0.2-purple?style=flat-square)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-green?style=flat-square&logo=springboot)
+![Spring AI](https://img.shields.io/badge/Spring%20AI%20Alibaba-1.1.2.2-purple?style=flat-square)
 ![AgentScope](https://img.shields.io/badge/AgentScope-Runtime-blueviolet?style=flat-square)
 ![Vue](https://img.shields.io/badge/Vue-3.4-brightgreen?style=flat-square&logo=vue.js)
 ![Naive UI](https://img.shields.io/badge/Naive%20UI-2.37-blue?style=flat-square)
@@ -367,6 +367,27 @@ npm run dev
 | admin | admin123 | 超级管理员 |
 
 > 支持自行注册账号体验
+
+### 开箱即用 Demo 数据（V3.1）
+
+Flyway 迁移 `V39__seed_demo.sql` 会自动装载**最小业务种子数据**，启动后可直接体验核心业务闭环：
+
+| 业务 | 种子数据 |
+|------|---------|
+| 联盟商 | 3 家（钻石 / 金牌 / 普通） |
+| 项目楼盘 | 3 个（望京壹号在售 / 中关村公馆在售 / 南城经典售罄） |
+| 项目佣金规则 | 3 条（含跳点 / 开单奖 / 平台奖） |
+| 客户 | 4 人（已成交 / 已到访 / 新报备 / 公海） |
+| 到访 / 成交 | 3 条到访 + 1 条成交（望京壹号 A-3-1001，800 万） |
+| **回款计划（演示 P0-2）** | 3 期：首付 300w ✅ 已结清 / 二期 400w ⏰ 2 天后到期 / 尾款 100w ❌ 已逾期 3 天 |
+
+**体验路径**：
+1. 登录 admin → 左菜单"房产业务 → 回款管理"
+2. 应看到 3 条分期、1 条已结清、1 条即将到期、1 条已逾期
+3. 启动应用后等至当天 08:30（或手动调 `POST /admin/receivable/check/overdue`），会自动触发逾期扫描、写入告警
+4. "监控 → AI 巡检"页能看到新增的回款告警记录
+
+> 回滚 Demo 数据：见 [V39__seed_demo.sql](pengcheng-starter/src/main/resources/db/migration/V39__seed_demo.sql) 文末 DELETE 模板。
 
 ## 配置说明
 

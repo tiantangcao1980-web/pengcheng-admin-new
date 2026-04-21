@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.realty;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.pengcheng.common.result.PageResult;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.realty.commission.dto.CommissionAuditDTO;
@@ -29,6 +30,7 @@ public class CommissionController {
      * 佣金分页查询
      */
     @GetMapping("/page")
+    @SaCheckPermission("realty:commission:list")
     public Result<PageResult<CommissionVO>> page(CommissionQueryDTO query) {
         return Result.ok(commissionService.pageCommissions(query));
     }
@@ -37,6 +39,7 @@ public class CommissionController {
      * 录入佣金
      */
     @PostMapping("/create")
+    @SaCheckPermission("realty:commission:add")
     @Log(title = "佣金管理", businessType = BusinessType.INSERT)
     public Result<Long> create(@RequestBody CommissionCreateDTO dto) {
         return Result.ok(commissionService.createCommission(dto));
@@ -46,6 +49,7 @@ public class CommissionController {
      * 财务审核佣金
      */
     @PostMapping("/audit")
+    @SaCheckPermission("realty:commission:audit")
     @Log(title = "佣金审核", businessType = BusinessType.UPDATE)
     public Result<Void> audit(@RequestBody CommissionAuditDTO dto) {
         commissionService.auditCommission(dto);

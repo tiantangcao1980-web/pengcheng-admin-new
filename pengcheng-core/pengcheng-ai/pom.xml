@@ -21,12 +21,16 @@
             <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
         </dependency>
 
-        <!-- 向量数据库 PGVector：需 RAG 时在根 pom dependencyManagement 中增加对应 starter 并在此处取消注释
+        <!--
+          向量数据库 PGVector（P2-1.1 启用，支持 RAG 知识库）
+          运行时是否生效取决于 application-*.yml 中 spring.ai.vectorstore.pgvector.* 配置是否完整。
+          dev 环境默认 enabled=false，仅在 prod/staging 配置齐备时由 Spring AI AutoConfiguration 激活。
+          需配合 docker-compose.yml 的 pgvector 服务使用。
+        -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-pgvector-store-spring-boot-starter</artifactId>
+            <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
         </dependency>
-        -->
 
         <!-- Apache Tika 文档解析（替代 stub DocumentProcessor） -->
         <dependency>

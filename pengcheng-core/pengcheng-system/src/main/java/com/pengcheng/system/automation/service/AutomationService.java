@@ -3,15 +3,18 @@ package com.pengcheng.system.automation.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pengcheng.system.automation.entity.AutomationLog;
 import com.pengcheng.system.automation.entity.AutomationRule;
+import com.pengcheng.system.automation.handler.RuleActionHandler;
 import com.pengcheng.system.automation.mapper.AutomationLogMapper;
 import com.pengcheng.system.automation.mapper.AutomationRuleMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 自动化规则引擎服务
@@ -20,12 +23,26 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AutomationService {
 
     private final AutomationRuleMapper ruleMapper;
     private final AutomationLogMapper logMapper;
     private final JdbcTemplate jdbcTemplate;
+
+    /** 动作分发表：actionType -> handler，由 Spring 自动收集所有 {@link RuleActionHandler} 实现 */
+    private final Map<String, RuleActionHandler> handlers;
+
+    public AutomationService(AutomationRuleMapper ruleMapper,
+                             AutomationLogMapper logMapper,
+                             JdbcTemplate jdbcTemplate,
+                             List<RuleActionHandler> handlerList) {
+        this.ruleMapper = ruleMapper;
+        this.logMapper = logMapper;
+        this.jdbcTemplate = jdbcTemplate;
+        this.handlers = handlerList.stream()
+                .collect(Collectors.toMap(RuleActionHandler::actionType, Function.identity()));
+        log.info("[Automation] 已注册 {} 个动作处理器：{}", handlers.size(), handlers.keySet());
+    }
 
     /**
      * 获取所有启用的规则
@@ -158,28 +175,17 @@ public class AutomationService {
         }
     }
 
+    /**
+     * 执行规则动作 — 通过 SPI 分发表派发到具体 {@link RuleActionHandler}。
+     * 未知动作类型仅记录告警，不抛异常，避免阻塞其他规则。
+     */
     private void executeAction(AutomationRule rule, Map<String, Object> data) {
-        switch (rule.getActionType()) {
-            case "notify" -> executeNotifyAction(rule, data);
-            case "assign" -> log.info("[Automation] 分配动作待实现: rule={}", rule.getName());
-            case "update_status" -> log.info("[Automation] 状态更新待实现: rule={}", rule.getName());
-            case "create_task" -> log.info("[Automation] 任务创建待实现: rule={}", rule.getName());
-            default -> log.warn("[Automation] 未知动作类型: {}", rule.getActionType());
+        RuleActionHandler h = handlers.get(rule.getActionType());
+        if (h == null) {
+            log.warn("[Automation] 未知动作类型: {}, rule={}", rule.getActionType(), rule.getName());
+            return;
         }
-    }
-
-    private void executeNotifyAction(AutomationRule rule, Map<String, Object> data) {
-        Map<String, Object> config = rule.getActionConfig();
-        String template = (String) config.getOrDefault("template", "自动化通知");
-
-        String message = template;
-        if (data != null) {
-            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                message = message.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
-            }
-        }
-
-        log.info("[Automation] 通知: rule={}, message={}", rule.getName(), message);
+        h.execute(rule, data == null ? new HashMap<>() : data);
     }
 
     private void logExecution(Long ruleId, Map<String, Object> triggerData, String result, int status) {

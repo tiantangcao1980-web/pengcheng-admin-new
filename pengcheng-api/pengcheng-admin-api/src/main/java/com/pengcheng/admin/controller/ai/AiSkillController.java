@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.ai;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.pengcheng.ai.orchestration.SkillEnableRegistry;
 import com.pengcheng.ai.orchestration.tool.AiAgentTool;
 import com.pengcheng.common.result.Result;
@@ -37,6 +38,7 @@ public class AiSkillController {
 
     /** 启用工具 */
     @PostMapping("/enable/{name}")
+    @SaCheckPermission("ai:skill:toggle")
     public Result<Void> enableSkill(@PathVariable String name) {
         skillEnableRegistry.enable(name);
         return Result.ok();
@@ -44,6 +46,7 @@ public class AiSkillController {
 
     /** 禁用工具 */
     @PostMapping("/disable/{name}")
+    @SaCheckPermission("ai:skill:toggle")
     public Result<Void> disableSkill(@PathVariable String name) {
         skillEnableRegistry.disable(name);
         return Result.ok();

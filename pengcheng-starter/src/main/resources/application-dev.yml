@@ -26,6 +26,21 @@ spring:
       api-key: ${DASHSCOPE_API_KEY:${SPRING_AI_DASHSCOPE_API_KEY:sk-test-key}}
       chat:
         api-key: ${SPRING_AI_DASHSCOPE_CHAT_API_KEY:${DASHSCOPE_API_KEY:${SPRING_AI_DASHSCOPE_API_KEY:sk-test-key}}}
+    # PGVector 向量库：dev 默认关闭（spring-ai-starter-vector-store-pgvector AutoConfiguration
+    # 在 initialize-schema=false 且未配置 datasource 时 Bean 不会激活，启动无副作用）
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        # 启用步骤：
+        #   1) 启动 docker-compose 中的 pgvector 服务
+        #   2) 去掉下方注释并填写 DB 连接信息
+        # datasource:
+        #   url: jdbc:postgresql://localhost:5433/pengcheng_vector
+        #   username: postgres
+        #   password: postgres
+        # dimensions: 1536
+        # index-type: ivfflat
+        # distance-type: cosine_distance
 
   flyway:
     enabled: true

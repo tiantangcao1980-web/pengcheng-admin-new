@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.hr;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.hr.attendance.dto.*;
 import com.pengcheng.hr.attendance.entity.AttendanceRecord;
@@ -58,6 +59,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/records")
+    @SaCheckPermission("hr:attendance:list")
     public Result<List<AttendanceRecord>> records(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) LocalDate startDate,

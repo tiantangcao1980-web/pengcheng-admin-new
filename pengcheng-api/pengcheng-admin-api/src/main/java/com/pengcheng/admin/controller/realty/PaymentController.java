@@ -1,5 +1,6 @@
 package com.pengcheng.admin.controller.realty;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.pengcheng.common.result.PageResult;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.realty.payment.dto.PaymentApprovalDTO;
@@ -29,6 +30,7 @@ public class PaymentController {
      * 创建付款申请
      */
     @PostMapping("/create")
+    @SaCheckPermission("realty:payment:add")
     @Log(title = "付款申请", businessType = BusinessType.INSERT)
     public Result<Long> create(@RequestBody PaymentRequestDTO dto) {
         return Result.ok(paymentService.createPaymentRequest(dto));
@@ -38,6 +40,7 @@ public class PaymentController {
      * 审批付款申请
      */
     @PostMapping("/approve")
+    @SaCheckPermission("realty:payment:approve")
     @Log(title = "付款审批", businessType = BusinessType.UPDATE)
     public Result<Void> approve(@RequestBody PaymentApprovalDTO dto) {
         paymentService.approvePaymentRequest(dto);
@@ -48,6 +51,7 @@ public class PaymentController {
      * 分页查询付款申请
      */
     @GetMapping("/page")
+    @SaCheckPermission("realty:payment:list")
     public Result<PageResult<PaymentVO>> page(PaymentQueryDTO query) {
         return Result.ok(paymentService.pagePaymentRequests(query));
     }
