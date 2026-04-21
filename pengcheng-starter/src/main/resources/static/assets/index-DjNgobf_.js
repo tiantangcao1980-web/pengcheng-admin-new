@@ -1,1 +1,0 @@
-import{d as t,c as o,b as n,o as s,i as c}from"./index-mrUFhmtx.js";const a={class:"p-4"},l=t({__name:"index",setup(r){return(_,i)=>{const e=c("n-result");return s(),o("div",a,[n(e,{status:"info",title:"测试菜单",description:"占位页面，用于收口构建。可按需替换为实际功能。"})])}}});export{l as default};

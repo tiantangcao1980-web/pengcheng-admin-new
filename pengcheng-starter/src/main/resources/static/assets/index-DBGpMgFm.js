@@ -1,0 +1,1 @@
+import{d as t,i as o,o as n,c as s,b as c}from"./index-DOMmkZ-V.js";const a={class:"p-4"},l=t({__name:"index",setup(r){return(_,i)=>{const e=o("n-result");return n(),s("div",a,[c(e,{status:"info",title:"测试菜单",description:"占位页面，用于收口构建。可按需替换为实际功能。"})])}}});export{l as default};

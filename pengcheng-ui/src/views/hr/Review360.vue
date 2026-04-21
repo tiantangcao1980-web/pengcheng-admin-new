@@ -1,11 +1,11 @@
 <template>
   <div class="review-360-page">
-    <n-grid :cols="24" :x-gap="16">
-      <!-- 左侧：评估任务列表 -->
+    <n-grid :cols="24" :x-gap="16" :y-gap="16">
       <n-gi :span="16">
         <n-card title="我的评估任务">
           <template #header-extra>
             <n-space>
+              <n-tag type="info">待办 {{ taskPagination.itemCount }}</n-tag>
               <n-button size="small" @click="loadPendingReviews">刷新</n-button>
             </n-space>
           </template>
@@ -15,25 +15,28 @@
             :data="pendingReviews"
             :loading="taskLoading"
             :pagination="taskPagination"
+            :row-key="row => `${row.periodId}-${row.userId}-${row.reviewType}`"
+            @update:page="handleTaskPageChange"
+            @update:page-size="handleTaskPageSizeChange"
           />
         </n-card>
 
-        <n-card title="评估结果查询" style="margin-top: 16px">
-          <n-form inline :model="resultFilter">
+        <n-card title="评估结果汇总" style="margin-top: 16px">
+          <n-form inline>
             <n-form-item label="考核周期">
               <n-select
                 v-model:value="resultFilter.periodId"
                 :options="periodOptions"
-                style="width: 200px"
+                style="width: 220px"
+                clearable
               />
             </n-form-item>
             <n-form-item label="被评估人">
               <n-select
                 v-model:value="resultFilter.userId"
                 :options="userOptions"
-                label-field="nickname"
-                value-field="id"
-                style="width: 200px"
+                style="width: 220px"
+                clearable
                 filterable
               />
             </n-form-item>
@@ -42,24 +45,29 @@
             </n-form-item>
           </n-form>
 
-          <div v-if="reviewResult" class="result-card">
+          <n-empty v-if="!reviewResult" description="选择周期和被评估人后查看 360 评估结果" />
+
+          <template v-else>
             <div class="result-header">
-              <h3>{{ reviewResult.userName }} - 360 度评估结果</h3>
-              <n-tag :type="gradeType(reviewResult.grade)" size="large">{{ reviewResult.grade }}级</n-tag>
+              <div>
+                <h3>{{ reviewResult.userName }} 的 360 评估结果</h3>
+                <p>共收到 {{ reviewResult.stats.totalCount }} 份评价</p>
+              </div>
+              <n-tag :type="gradeType(reviewResult.grade)" size="large">{{ reviewResult.grade }} 级</n-tag>
             </div>
 
             <n-grid :cols="4" :x-gap="12" :y-gap="12" class="score-grid">
               <n-gi>
-                <n-statistic label="自评分数" :value="reviewResult.selfScore" />
+                <n-statistic label="自评" :value="reviewResult.selfScore" />
               </n-gi>
               <n-gi>
-                <n-statistic label="上级评分" :value="reviewResult.managerScore" />
+                <n-statistic label="上级评价" :value="reviewResult.managerScore" />
               </n-gi>
               <n-gi>
-                <n-statistic label="同事评分" :value="reviewResult.peerScore" />
+                <n-statistic label="同事评价" :value="reviewResult.peerScore" />
               </n-gi>
               <n-gi>
-                <n-statistic label="下级评分" :value="reviewResult.subordinateScore" />
+                <n-statistic label="下级评价" :value="reviewResult.subordinateScore" />
               </n-gi>
             </n-grid>
 
@@ -67,58 +75,85 @@
             <div class="final-score">
               <n-progress
                 type="dashboard"
-                :percentage="reviewResult.finalScore"
-                :status="reviewResult.finalScore >= 90 ? 'success' : reviewResult.finalScore >= 80 ? 'success' : 'warning'"
+                :percentage="Number(reviewResult.finalScore || 0)"
+                :status="Number(reviewResult.finalScore || 0) >= 80 ? 'success' : Number(reviewResult.finalScore || 0) >= 70 ? 'warning' : 'error'"
               />
             </div>
 
             <n-divider>评价详情</n-divider>
             <n-timeline>
               <n-timeline-item
-                v-for="review in reviewResult.reviews"
-                :key="review.id"
+                v-for="(review, index) in reviewResult.reviews"
+                :key="`${review.reviewType}-${index}`"
                 :type="reviewTypeColor(review.reviewType)"
-                :title="review.reviewTypeName"
-                :content="`${review.reviewerName}：${review.score}分`"
+                :title="`${review.reviewTypeName} · ${review.reviewerName}`"
+                :content="`${review.score} 分`"
               >
                 <template #footer>
                   <div class="review-detail">
                     <p v-if="review.comment"><strong>评价：</strong>{{ review.comment }}</p>
                     <p v-if="review.strengths"><strong>优点：</strong>{{ review.strengths }}</p>
-                    <p v-if="review.improvements"><strong>待改进：</strong>{{ review.improvements }}</p>
+                    <p v-if="review.improvements"><strong>改进建议：</strong>{{ review.improvements }}</p>
                   </div>
                 </template>
               </n-timeline-item>
             </n-timeline>
-          </div>
+          </template>
         </n-card>
       </n-gi>
 
-      <!-- 右侧：评估配置与统计 -->
       <n-gi :span="8">
-        <n-card title="权重配置">
-          <n-form label-placement="left" label-width="80">
+        <n-card title="任务分发">
+          <n-form label-placement="left" label-width="90">
+            <n-form-item label="考核周期">
+              <n-select
+                v-model:value="dispatchForm.periodId"
+                :options="periodOptions"
+                placeholder="选择一个周期"
+              />
+            </n-form-item>
+            <n-form-item label="参与人员">
+              <n-select
+                v-model:value="dispatchForm.userIds"
+                multiple
+                filterable
+                clearable
+                :options="userOptions"
+                placeholder="选择需要生成任务的员工"
+              />
+            </n-form-item>
+            <n-form-item>
+              <n-button type="primary" :loading="dispatchLoading" @click="createReviewTasks">批量生成任务</n-button>
+            </n-form-item>
+          </n-form>
+          <n-alert type="info" :show-icon="false">
+            已支持四向任务生成：自评、上级、同事、下级。重复生成会自动去重。
+          </n-alert>
+        </n-card>
+
+        <n-card title="权重配置" style="margin-top: 16px">
+          <n-form label-placement="left" label-width="90">
             <n-form-item label="自评权重">
               <n-input-number v-model:value="weightConfig.selfWeight" :min="0" :max="1" :step="0.05" style="width: 100%">
-                <template #suffix>{{ (weightConfig.selfWeight * 100).toFixed(0) }}%</template>
+                <template #suffix>{{ percent(weightConfig.selfWeight) }}</template>
               </n-input-number>
             </n-form-item>
             <n-form-item label="上级权重">
               <n-input-number v-model:value="weightConfig.managerWeight" :min="0" :max="1" :step="0.05" style="width: 100%">
-                <template #suffix>{{ (weightConfig.managerWeight * 100).toFixed(0) }}%</template>
+                <template #suffix>{{ percent(weightConfig.managerWeight) }}</template>
               </n-input-number>
             </n-form-item>
             <n-form-item label="同事权重">
               <n-input-number v-model:value="weightConfig.peerWeight" :min="0" :max="1" :step="0.05" style="width: 100%">
-                <template #suffix>{{ (weightConfig.peerWeight * 100).toFixed(0) }}%</template>
+                <template #suffix>{{ percent(weightConfig.peerWeight) }}</template>
               </n-input-number>
             </n-form-item>
             <n-form-item label="下级权重">
               <n-input-number v-model:value="weightConfig.subordinateWeight" :min="0" :max="1" :step="0.05" style="width: 100%">
-                <template #suffix>{{ (weightConfig.subordinateWeight * 100).toFixed(0) }}%</template>
+                <template #suffix>{{ percent(weightConfig.subordinateWeight) }}</template>
               </n-input-number>
             </n-form-item>
-            <n-form-item label="最小人数">
+            <n-form-item label="最少人数">
               <n-input-number v-model:value="weightConfig.minReviewers" :min="1" :max="20" style="width: 100%" />
             </n-form-item>
             <n-form-item label="匿名评估">
@@ -130,38 +165,43 @@
           </n-form>
         </n-card>
 
-        <n-card title="评估统计" style="margin-top: 16px" v-if="reviewResult?.stats">
+        <n-card title="统计速览" style="margin-top: 16px">
           <n-space vertical>
-            <n-statistic label="总评估人数" :value="reviewResult.stats.totalCount" />
-            <n-statistic label="自评" :value="reviewResult.stats.selfCount" />
-            <n-statistic label="上级评价" :value="reviewResult.stats.managerCount" />
-            <n-statistic label="同事评价" :value="reviewResult.stats.peerCount" />
-            <n-statistic label="下级评价" :value="reviewResult.stats.subordinateCount" />
+            <n-statistic label="当前待办任务" :value="taskPagination.itemCount" />
+            <n-statistic label="本次结果评价数" :value="reviewResult?.stats.totalCount || 0" />
+            <n-statistic label="匿名评估" :value="weightConfig.anonymous ? 1 : 0">
+              <template #suffix>{{ weightConfig.anonymous ? '开启' : '关闭' }}</template>
+            </n-statistic>
           </n-space>
         </n-card>
       </n-gi>
     </n-grid>
 
-    <!-- 评估表单弹窗 -->
     <n-modal v-model:show="showReviewForm" preset="card" :title="reviewFormTitle" style="width: 600px">
-      <n-form :model="reviewForm" label-placement="left" label-width="100">
+      <n-form label-placement="left" label-width="100">
         <n-form-item label="被评估人">
           <span>{{ currentRevieweeName }}</span>
         </n-form-item>
         <n-form-item label="评估类型">
-          <span>{{ reviewTypeName }}</span>
+          <span>{{ currentReviewTypeName }}</span>
         </n-form-item>
         <n-form-item label="总分" required>
-          <n-input-number v-model:value="reviewForm.totalScore" :min="0" :max="100" style="width: 100%" placeholder="0-100 分" />
+          <n-input-number
+            v-model:value="reviewForm.totalScore"
+            :min="0"
+            :max="100"
+            style="width: 100%"
+            placeholder="请输入 0 - 100 分"
+          />
         </n-form-item>
         <n-form-item label="评价意见">
-          <n-input v-model:value="reviewForm.comment" type="textarea" placeholder="请写下您的评价" :rows="3" />
+          <n-input v-model:value="reviewForm.comment" type="textarea" :rows="3" placeholder="请写下您的整体评价" />
         </n-form-item>
-        <n-form-item label="优点/长处">
-          <n-input v-model:value="reviewForm.strengths" type="textarea" placeholder="被评估人的优点和长处" :rows="2" />
+        <n-form-item label="优点">
+          <n-input v-model:value="reviewForm.strengths" type="textarea" :rows="2" placeholder="记录值得肯定的表现" />
         </n-form-item>
-        <n-form-item label="待改进项">
-          <n-input v-model:value="reviewForm.improvements" type="textarea" placeholder="需要改进的方面" :rows="2" />
+        <n-form-item label="改进建议">
+          <n-input v-model:value="reviewForm.improvements" type="textarea" :rows="2" placeholder="记录后续改进方向" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -175,10 +215,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, h, onMounted } from 'vue'
-import { NButton, NTag, NProgress, NTimeline, NTimelineItem, NStatistic, useMessage, type DataTableColumns } from 'naive-ui'
-import { request } from '@/utils/request'
+import { computed, h, onMounted, reactive, ref } from 'vue'
+import { NButton, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { hrKpiPeriodApi } from '@/api/hr'
 import { userApi } from '@/api/system'
+import { request } from '@/utils/request'
 
 interface PendingReview {
   periodId: number
@@ -186,7 +227,18 @@ interface PendingReview {
   reviewType: number
 }
 
+interface PeriodOption {
+  label: string
+  value: number
+}
+
+interface UserOption {
+  label: string
+  value: number
+}
+
 interface ReviewResult {
+  userId: number
   userName: string
   selfScore: number
   managerScore: number
@@ -206,9 +258,9 @@ interface ReviewResult {
     reviewTypeName: string
     reviewerName: string
     score: number
-    comment: string
-    strengths: string
-    improvements: string
+    comment?: string
+    strengths?: string
+    improvements?: string
   }>
 }
 
@@ -221,18 +273,45 @@ interface WeightConfig {
   anonymous: boolean
 }
 
+interface PageResult<T> {
+  list: T[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 const message = useMessage()
 
 const pendingReviews = ref<PendingReview[]>([])
-const taskLoading = ref(false)
-const taskPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-
-const periodOptions = ref<any[]>([])
-const userOptions = ref<any[]>([])
-const resultFilter = reactive({ periodId: null as number | null, userId: null as number | null })
 const reviewResult = ref<ReviewResult | null>(null)
+const periodOptions = ref<PeriodOption[]>([])
+const userOptions = ref<UserOption[]>([])
 
-const weightConfig = ref<WeightConfig>({
+const taskLoading = ref(false)
+const dispatchLoading = ref(false)
+const weightSaving = ref(false)
+const submitting = ref(false)
+const showReviewForm = ref(false)
+
+const taskPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  itemCount: 0,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50]
+})
+
+const resultFilter = reactive({
+  periodId: null as number | null,
+  userId: null as number | null
+})
+
+const dispatchForm = reactive({
+  periodId: null as number | null,
+  userIds: [] as number[]
+})
+
+const weightConfig = reactive<WeightConfig>({
   selfWeight: 0.1,
   managerWeight: 0.4,
   peerWeight: 0.3,
@@ -240,10 +319,7 @@ const weightConfig = ref<WeightConfig>({
   minReviewers: 3,
   anonymous: true
 })
-const weightSaving = ref(false)
 
-const showReviewForm = ref(false)
-const submitting = ref(false)
 const reviewForm = reactive({
   periodId: null as number | null,
   userId: null as number | null,
@@ -253,120 +329,189 @@ const reviewForm = reactive({
   strengths: '',
   improvements: ''
 })
+
 const currentRevieweeName = ref('')
-const reviewTypeName = ref('')
+
+const periodNameMap = computed(() => {
+  const map = new Map<number, string>()
+  periodOptions.value.forEach(item => map.set(item.value, item.label))
+  return map
+})
+
+const userNameMap = computed(() => {
+  const map = new Map<number, string>()
+  userOptions.value.forEach(item => map.set(item.value, item.label))
+  return map
+})
+
+const currentReviewTypeName = computed(() => getReviewTypeName(reviewForm.reviewType))
+const reviewFormTitle = computed(() => `提交${currentReviewTypeName.value}`)
 
 const taskColumns: DataTableColumns<PendingReview> = [
-  { title: '考核周期', key: 'periodId', width: 120, render: (row) => `周期${row.periodId}` },
-  { title: '被评估人', key: 'userId', width: 120, render: (row) => `用户${row.userId}` },
   {
-    title: '评估类型', key: 'reviewType', width: 100,
-    render: (row) => h(NTag, {
-      size: 'small',
-      type: row.reviewType === 1 ? 'info' : row.reviewType === 2 ? 'success' : row.reviewType === 3 ? 'warning' : 'error'
-    }, { default: () => getReviewTypeName(row.reviewType) })
+    title: '考核周期',
+    key: 'periodId',
+    width: 180,
+    render: row => periodNameMap.value.get(row.periodId) || `周期 ${row.periodId}`
   },
   {
-    title: '操作', key: 'action', width: 100,
-    render: (row) => h(NButton, {
-      size: 'small',
-      type: 'primary',
-      onClick: () => openReviewForm(row)
-    }, { default: () => '评估' })
+    title: '被评估人',
+    key: 'userId',
+    width: 140,
+    render: row => userNameMap.value.get(row.userId) || `用户 ${row.userId}`
+  },
+  {
+    title: '评估类型',
+    key: 'reviewType',
+    width: 120,
+    render: row =>
+      h(NTag, { size: 'small', type: reviewTypeTag(row.reviewType) }, {
+        default: () => getReviewTypeName(row.reviewType)
+      })
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 120,
+    render: row =>
+      h(
+        NButton,
+        {
+          size: 'small',
+          type: 'primary',
+          onClick: () => openReviewForm(row)
+        },
+        { default: () => '去评估' }
+      )
   }
 ]
 
-function getReviewTypeName(type: number): string {
-  const map: Record<number, string> = { 1: '自评', 2: '上级', 3: '同事', 4: '下级' }
-  return map[type] || '未知'
-}
+onMounted(async () => {
+  await Promise.all([loadPeriods(), loadUserOptions(), loadWeightConfig()])
+  await loadPendingReviews()
+})
 
-function gradeType(grade: string): 'success' | 'warning' | 'error' | 'default' {
-  if (grade === 'A') return 'success'
-  if (grade === 'B') return 'success'
-  if (grade === 'C') return 'warning'
-  return 'error'
-}
-
-function reviewTypeColor(type: number): 'default' | 'info' | 'success' | 'warning' | 'error' {
-  const map: Record<number, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
-    1: 'info', 2: 'success', 3: 'warning', 4: 'error'
+async function loadPeriods() {
+  const res: any = await hrKpiPeriodApi.page({ pageNum: 1, pageSize: 100 })
+  const list = res?.list || res?.records || []
+  periodOptions.value = list.map((item: any) => ({
+    label: item.name || `周期 ${item.id}`,
+    value: item.id
+  }))
+  if (!resultFilter.periodId && periodOptions.value.length > 0) {
+    resultFilter.periodId = periodOptions.value[0].value
   }
-  return map[type] || 'default'
+  if (!dispatchForm.periodId && periodOptions.value.length > 0) {
+    dispatchForm.periodId = periodOptions.value[0].value
+  }
+}
+
+async function loadUserOptions() {
+  const res: any = await userApi.page({ page: 1, pageSize: 200, status: 1 })
+  const list = res?.list || []
+  userOptions.value = list.map((item: any) => ({
+    label: item.nickname || item.username || `用户 ${item.id}`,
+    value: item.id
+  }))
 }
 
 async function loadPendingReviews() {
   taskLoading.value = true
   try {
-    const res: any = await request({ url: '/admin/hr/kpi/review/360/pending', method: 'get' })
-    const data = res?.data || res || {}
-    pendingReviews.value = data?.list || []
-    taskPagination.itemCount = data?.total || 0
-  } catch (err: any) {
-    message.error(err?.message || '加载失败')
+    const res = await request<PageResult<PendingReview>>({
+      url: '/admin/hr/kpi/review/360/pending',
+      method: 'get',
+      params: {
+        page: taskPagination.page,
+        pageSize: taskPagination.pageSize
+      }
+    })
+    pendingReviews.value = res.list || []
+    taskPagination.itemCount = res.total || 0
   } finally {
     taskLoading.value = false
   }
 }
 
-async function loadPeriods() {
-  try {
-    const res: any = await request({ url: '/admin/hr/kpi/periods', method: 'get', params: { pageNum: 1, pageSize: 50 } })
-    const list = res?.data?.records || res?.records || []
-    periodOptions.value = list.map((p: any) => ({ label: p.name, value: p.id }))
-    if (periodOptions.value.length) resultFilter.periodId = periodOptions.value[0].value
-  } catch {}
+function handleTaskPageChange(page: number) {
+  taskPagination.page = page
+  loadPendingReviews()
 }
 
-async function loadUserOptions() {
-  try {
-    const res: any = await userApi.page({ page: 1, pageSize: 100 })
-    userOptions.value = res?.list || res?.data?.list || []
-  } catch {}
+function handleTaskPageSizeChange(pageSize: number) {
+  taskPagination.page = 1
+  taskPagination.pageSize = pageSize
+  loadPendingReviews()
 }
 
 async function loadReviewResult() {
   if (!resultFilter.periodId || !resultFilter.userId) {
-    message.warning('请选择周期和被评估人')
+    message.warning('请选择考核周期和被评估人')
     return
   }
   try {
-    const res: any = await request({
+    reviewResult.value = await request<ReviewResult>({
       url: '/admin/hr/kpi/review/360/result',
       method: 'get',
-      params: { periodId: resultFilter.periodId, userId: resultFilter.userId }
+      params: {
+        periodId: resultFilter.periodId,
+        userId: resultFilter.userId
+      }
     })
-    reviewResult.value = res?.data || res || null
-  } catch (err: any) {
-    message.error(err?.message || '查询失败')
+  } catch {
     reviewResult.value = null
   }
 }
 
 async function loadWeightConfig() {
-  try {
-    const res: any = await request({ url: '/admin/hr/kpi/review/360/config', method: 'get' })
-    const config = res?.data || res || {}
-    weightConfig.value = {
-      selfWeight: config.selfWeight ?? 0.1,
-      managerWeight: config.managerWeight ?? 0.4,
-      peerWeight: config.peerWeight ?? 0.3,
-      subordinateWeight: config.subordinateWeight ?? 0.2,
-      minReviewers: config.minReviewers ?? 3,
-      anonymous: config.anonymous !== false
-    }
-  } catch {}
+  const config = await request<WeightConfig>({
+    url: '/admin/hr/kpi/review/360/config',
+    method: 'get'
+  })
+  weightConfig.selfWeight = config.selfWeight ?? 0.1
+  weightConfig.managerWeight = config.managerWeight ?? 0.4
+  weightConfig.peerWeight = config.peerWeight ?? 0.3
+  weightConfig.subordinateWeight = config.subordinateWeight ?? 0.2
+  weightConfig.minReviewers = config.minReviewers ?? 3
+  weightConfig.anonymous = config.anonymous !== false
 }
 
 async function saveWeightConfig() {
+  const totalWeight = weightConfig.selfWeight + weightConfig.managerWeight + weightConfig.peerWeight + weightConfig.subordinateWeight
+  if (Math.abs(totalWeight - 1) > 0.001) {
+    message.warning('四向权重合计必须等于 1')
+    return
+  }
   weightSaving.value = true
   try {
-    await request({ url: '/admin/hr/kpi/review/360/config', method: 'post', data: weightConfig.value })
-    message.success('配置已保存')
-  } catch (err: any) {
-    message.error(err?.message || '保存失败')
+    await request({
+      url: '/admin/hr/kpi/review/360/config',
+      method: 'post',
+      data: weightConfig
+    })
+    message.success('权重配置已保存')
   } finally {
     weightSaving.value = false
+  }
+}
+
+async function createReviewTasks() {
+  if (!dispatchForm.periodId || dispatchForm.userIds.length === 0) {
+    message.warning('请选择考核周期和参与人员')
+    return
+  }
+  dispatchLoading.value = true
+  try {
+    const count = await request<number>({
+      url: '/admin/hr/kpi/review/360/tasks',
+      method: 'post',
+      params: { periodId: dispatchForm.periodId },
+      data: dispatchForm.userIds
+    })
+    message.success(`任务生成完成，本次新增 ${count} 条`)
+    await loadPendingReviews()
+  } finally {
+    dispatchLoading.value = false
   }
 }
 
@@ -378,44 +523,109 @@ function openReviewForm(row: PendingReview) {
   reviewForm.comment = ''
   reviewForm.strengths = ''
   reviewForm.improvements = ''
-  currentRevieweeName.value = `用户${row.userId}`
-  reviewTypeName.value = getReviewTypeName(row.reviewType)
+  currentRevieweeName.value = userNameMap.value.get(row.userId) || `用户 ${row.userId}`
   showReviewForm.value = true
 }
 
 async function submitReview() {
-  if (!reviewForm.totalScore) {
-    message.warning('请输入总分')
+  if (reviewForm.totalScore === null) {
+    message.warning('请输入评分')
     return
   }
   submitting.value = true
   try {
-    await request({ url: '/admin/hr/kpi/review/360', method: 'post', data: reviewForm })
+    await request({
+      url: '/admin/hr/kpi/review/360',
+      method: 'post',
+      data: reviewForm
+    })
     message.success('评估已提交')
     showReviewForm.value = false
-    loadPendingReviews()
-  } catch (err: any) {
-    message.error(err?.message || '提交失败')
+    await loadPendingReviews()
+    if (resultFilter.periodId === reviewForm.periodId && resultFilter.userId === reviewForm.userId) {
+      await loadReviewResult()
+    }
   } finally {
     submitting.value = false
   }
 }
 
-onMounted(() => {
-  loadPendingReviews()
-  loadPeriods()
-  loadUserOptions()
-  loadWeightConfig()
-})
+function getReviewTypeName(type: number) {
+  const map: Record<number, string> = {
+    1: '自评',
+    2: '上级评价',
+    3: '同事评价',
+    4: '下级评价'
+  }
+  return map[type] || '未知类型'
+}
+
+function reviewTypeTag(type: number): 'info' | 'success' | 'warning' | 'error' {
+  const map: Record<number, 'info' | 'success' | 'warning' | 'error'> = {
+    1: 'info',
+    2: 'success',
+    3: 'warning',
+    4: 'error'
+  }
+  return map[type] || 'info'
+}
+
+function reviewTypeColor(type: number): 'default' | 'info' | 'success' | 'warning' | 'error' {
+  return reviewTypeTag(type)
+}
+
+function gradeType(grade: string): 'success' | 'warning' | 'error' | 'default' {
+  if (grade === 'A' || grade === 'B') return 'success'
+  if (grade === 'C') return 'warning'
+  if (grade === 'D') return 'error'
+  return 'default'
+}
+
+function percent(value: number) {
+  return `${Math.round((value || 0) * 100)}%`
+}
 </script>
 
 <style scoped>
-.review-360-page { padding: 20px; }
-.result-card { padding: 16px 0; }
-.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.result-header h3 { margin: 0; font-size: 18px; }
-.score-grid { margin-bottom: 16px; }
-.final-score { display: flex; justify-content: center; padding: 20px 0; }
-.review-detail { background: #f5f5f5; padding: 12px; border-radius: 6px; margin-top: 8px; }
-.review-detail p { margin: 4px 0; font-size: 13px; }
+.review-360-page {
+  padding: 20px;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.result-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.result-header p {
+  margin: 0;
+  color: #666;
+}
+
+.score-grid {
+  margin-bottom: 16px;
+}
+
+.final-score {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.review-detail {
+  background: #f6f8fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.review-detail p {
+  margin: 4px 0;
+}
 </style>

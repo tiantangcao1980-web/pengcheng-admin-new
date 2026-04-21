@@ -1,4 +1,5 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios from 'axios'
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { useUserStore } from '@/stores/user'
 
 // API响应结构
