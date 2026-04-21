@@ -1,6 +1,7 @@
 package com.pengcheng.admin.controller.hr;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pengcheng.common.result.Result;
@@ -171,7 +172,7 @@ public class HrKpiController {
     public Result<Object> getPendingReviews(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(kpiReview360Service.getPendingReviews(null, page, pageSize));
+        return Result.ok(kpiReview360Service.getPendingReviews(StpUtil.getLoginIdAsLong(), page, pageSize));
     }
 
     @Operation(summary = "获取 360 度评估结果", description = "获取指定用户在指定周期的 360 度评估详细结果")

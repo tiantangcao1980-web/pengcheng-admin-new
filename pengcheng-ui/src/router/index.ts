@@ -68,6 +68,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '付款申请', icon: 'WalletOutline' }
       },
       {
+        path: 'realty/receivable',
+        name: 'RealtyReceivable',
+        component: () => import('@/views/realty/receivable/index.vue'),
+        meta: { title: '回款管理', icon: 'CashOutline' }
+      },
+      {
         path: 'realty/visit',
         name: 'SalesVisit',
         component: () => import('@/views/realty/visit/index.vue'),

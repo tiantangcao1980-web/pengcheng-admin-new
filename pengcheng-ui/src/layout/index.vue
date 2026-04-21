@@ -650,6 +650,7 @@ function getIconName(key: string): string {
     '/realty/customer': 'PeopleOutline',
     '/realty/alliance': 'BusinessOutline',
     '/realty/commission': 'CashOutline',
+    '/realty/receivable': 'CashOutline',
     '/realty/attendance': 'TimeOutline',
     '/realty/payment': 'WalletOutline',
     '/realty/project': 'BusinessOutline',
