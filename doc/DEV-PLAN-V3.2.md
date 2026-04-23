@@ -236,7 +236,7 @@
 |---|------|------|
 | F-1 | `RELEASE-CHECKLIST-V3.0.md` 逐项验证 | ⬜ |
 | F-2 | 增加“禁用态功能完整性自检”章节 | ⬜ |
-| F-3 | 归档过时报告到 `doc/archive/v3.0/` | ⬜ |
+| F-3 | 归档过时报告到 `doc/archive/v3.0-delivery/`、`doc/archive/v3.x-plans/` | ✅ | 2026-04-23 执行，13 份 V3.0 交付报告 + 5 份 V3.x 计划已归档（commit `4b18b4d`） |
 | F-4 | `README.md` 版本基线到 V3.2 | ⬜ |
 | F-5 | 用户手册 / API-REFERENCE 对齐 | ⬜ |
 | F-6 | `DELIVERY-CHECKLIST.md` 签字 + `cloudbaserc.json` 更新 | ⬜ |
