@@ -12,6 +12,8 @@ target/
 **/target/
 **/.jqwik-database/
 **/.jqwik-database
+*.bak
+**/*.bak
 
 # Logs
 *.log

@@ -4,13 +4,13 @@
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-green?style=flat-square&logo=springboot)
-![Spring AI](https://img.shields.io/badge/Spring%20AI%20Alibaba-1.1.2.2-purple?style=flat-square)
-![AgentScope](https://img.shields.io/badge/AgentScope-Runtime-blueviolet?style=flat-square)
+![Spring AI](https://img.shields.io/badge/Spring%20AI-1.1.2-purple?style=flat-square)
+![Spring AI Alibaba](https://img.shields.io/badge/Spring%20AI%20Alibaba-1.1.2.2-purple?style=flat-square)
 ![Vue](https://img.shields.io/badge/Vue-3.4-brightgreen?style=flat-square&logo=vue.js)
 ![Naive UI](https://img.shields.io/badge/Naive%20UI-2.37-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-**AI 驱动的房地产智能协作平台 — AgentScope + Spring AI Alibaba 双引擎基座**
+**AI 驱动的房地产智能协作平台 — 基于 Spring AI + Spring AI Alibaba，自研多 Agent 编排层**
 
 [在线预览](#在线演示) | [开发文档](#开发指南) | [部署手册](doc/DEPLOYMENT.md) | [V3.0 发布清单](doc/RELEASE-CHECKLIST-V3.0.md) | [问题反馈](mailto:support@pengchengkeji.com)
 
@@ -30,7 +30,7 @@
 
 ## 项目简介
 
-MasterLife 是一个 **AI 驱动的房地产智能协作平台**，以 **AgentScope + Spring AI Alibaba** 为 AI 双引擎基座，借鉴钉钉、飞书、CoPaw 的产品理念，采用前后端分离 + 模块化单体架构。
+MasterLife 是一个 **AI 驱动的房地产智能协作平台**，以 **Spring AI 1.1.2 + Spring AI Alibaba 1.1.2.2**（DashScope starter + PGVector starter）为 AI 基础设施，基于其上自研多 Agent 编排层（`pengcheng-ai/orchestration`），借鉴钉钉、飞书、CoPaw 的产品理念，采用前后端分离 + 模块化单体架构。
 
 **核心能力**：
 - **智能办公** — 即时通讯、多维表格、云文档、文件管理、审批流程
@@ -51,8 +51,9 @@ MasterLife 是一个 **AI 驱动的房地产智能协作平台**，以 **AgentSc
 | Redis | 7.0+ | 缓存/会话存储 |
 | MySQL | 8.0+ | 数据库 |
 | Quartz | 2.3.2 | 定时任务框架 |
-| Spring AI Alibaba | 1.0.0.2 | AI 框架（Agent Framework / StateGraph / MCP / RAG） |
-| AgentScope Runtime | - | 多智能体编排引擎 |
+| Spring AI | 1.1.2 | AI 框架基座 |
+| Spring AI Alibaba | 1.1.2.2 | DashScope starter + PGVector starter |
+| 自研 Orchestration | - | 多 Agent 编排（`pengcheng-ai/orchestration`，含 `RouterService`/`OrchestratorService`） |
 | PostgreSQL + pgvector | 16+ | 知识库向量存储（RAG） |
 | Apache Tika | 2.9.1 | 文档解析（PDF/Word/Excel/PPT） |
 | Flyway | 10.x | 数据库版本管理 |
@@ -204,9 +205,9 @@ pengcheng-admin
 - **考勤打卡** - 签到记录、考勤统计、补卡申请
 - **业务看板** - 销售数据概览、回款率、业绩排行
 
-### AI 智能能力（双引擎基座：AgentScope + Spring AI Alibaba）
+### AI 智能能力（基于 Spring AI + Spring AI Alibaba，自研多 Agent 编排）
 - **RAG 知识库** - 上传 PDF/Word/Excel/PPT，Apache Tika 解析 → PGVector 向量存储 → 智能问答
-- **多 Agent 编排** - Spring AI Agent Framework + StateGraph 工作流，支持 A2A 协议
+- **多 Agent 编排** - 自研 `pengcheng-ai/orchestration` 包（`RouterService / OrchestratorService`）基于 Spring AI Agent Framework 构建
 - **MCP 工具服务** - 业务工具标准化暴露，支持跨服务 Agent 调用
 - **智能判客** - AI 客户分析 + 规则引擎降级
 - **营销文案生成** - 基于关键词生成朋友圈营销文案
@@ -478,10 +479,20 @@ public class CustomLoginStrategy implements LoginStrategy {
 
 ## 更新日志
 
+### V4.0（新产品规划 · 2026-04 起）
+- **新产品定位**：AI 驱动的中小企业智能协作平台，按「完整业务闭环」组织产品
+- 详细需求见 [`doc/PRD-V4.0-新产品需求文档.md`](doc/PRD-V4.0-新产品需求文档.md)
+- 与 V3.2 [开发计划](doc/DEV-PLAN-V3.2.md) 并行推进，MVP 目标 6~8 周交付
+
+### V3.2（当前迭代 · 2026-04-22 起）
+- 见 [`doc/DEV-PLAN-V3.2.md`](doc/DEV-PLAN-V3.2.md)
+- **Feature Flag 机制**：`pengcheng.feature.{alipay, wechat.mp, wechat.mini, wechat.pay}` 默认关闭，按需开启
+- Sprint 5-7：参数校验/错误码收口、佣金闭环、密钥保险箱、部署安全、前端类型严格化、会议真 API、AI 容错与 RAG 降级、微信/支付宝加固、测试基线、可观测、CI/CD
+
 ### v3.0.0（收口阶段）
-- 开发任务见 `doc/TASKS-V3.0.md`，发布前检查见 `doc/RELEASE-CHECKLIST-V3.0.md`
-- Spring AI Alibaba 升级至 1.0.0.2（Agent Framework / StateGraph / MCP）
-- 引入 AgentScope Runtime 作为多智能体编排引擎
+- 开发任务见 `doc/archive/v3.x-plans/TASKS-V3.0.md`（已归档），发布前检查见 `doc/RELEASE-CHECKLIST-V3.0.md`
+- Spring AI Alibaba 升级至 1.1.2.2（DashScope starter + PGVector starter）
+- 自研多 Agent 编排层（`pengcheng-ai/orchestration`）基于 Spring AI Agent Framework 构建
 - RAG 知识库升级（DashScope Embedding + PGVector + Apache Tika）
 - 聊天功能增强（消息撤回/引用/@/ACK/离线消息/未读角标/通知）
 - 智能表格（多维表格，14 种字段类型，多视图）
