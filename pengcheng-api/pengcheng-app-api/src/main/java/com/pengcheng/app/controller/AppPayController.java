@@ -3,6 +3,7 @@ package com.pengcheng.app.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.pengcheng.app.dto.AppPayCreateDTO;
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.common.exception.BusinessException;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.pay.PayServiceFactory;
@@ -11,6 +12,7 @@ import com.pengcheng.realty.payment.service.PaymentService;
 import com.pengcheng.system.entity.SysUser;
 import com.pengcheng.system.service.SysUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +29,7 @@ import java.util.Map;
 @RequestMapping("/app/pay")
 @RequiredArgsConstructor
 @SaCheckLogin
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_PAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class AppPayController {
 
     private final PaymentService paymentService;

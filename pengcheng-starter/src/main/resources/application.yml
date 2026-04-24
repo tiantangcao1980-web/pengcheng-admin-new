@@ -31,3 +31,14 @@ knife4j:
 server:
   port: 8080
 
+pengcheng:
+  feature:
+    alipay:
+      enabled: false
+    wechat:
+      mp:
+        enabled: false
+      mini:
+        enabled: false
+      pay:
+        enabled: false

@@ -7,9 +7,11 @@ import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.request.AlipayTradePrecreateRequest;
 import com.alipay.api.response.AlipayTradePrecreateResponse;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.system.helper.SystemConfigHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -21,6 +23,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.ALIPAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class AlipayService extends AbstractPayService {
 
     private final SystemConfigHelper configHelper;

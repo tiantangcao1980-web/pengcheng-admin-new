@@ -15,10 +15,15 @@ import com.pengcheng.realty.commission.mapper.CommissionMapper;
 import com.pengcheng.realty.common.exception.ApprovalFlowException;
 import com.pengcheng.realty.common.exception.CommissionValidationException;
 import com.pengcheng.realty.customer.entity.Customer;
+import com.pengcheng.realty.customer.entity.CustomerProject;
 import com.pengcheng.realty.customer.entity.CustomerDeal;
+import com.pengcheng.realty.customer.mapper.CustomerProjectMapper;
 import com.pengcheng.realty.customer.mapper.CustomerDealMapper;
 import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
+import com.pengcheng.realty.project.entity.ProjectCommissionRule;
+import com.pengcheng.realty.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -33,6 +39,7 @@ import java.util.stream.Collectors;
 /**
  * 成交佣金管理服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CommissionService {
@@ -42,6 +49,9 @@ public class CommissionService {
     private final CommissionChangeLogMapper commissionChangeLogMapper;
     private final CustomerDealMapper customerDealMapper;
     private final RealtyCustomerMapper realtyCustomerMapper;
+    private final CustomerProjectMapper customerProjectMapper;
+    private final ProjectService projectService;
+    private final CommissionCalculator commissionCalculator;
     private final ApplicationEventPublisher eventPublisher;
 
     /** 审核状态：待审核 */
@@ -207,6 +217,79 @@ public class CommissionService {
     }
 
     /**
+     * 月末自动扫描满足结佣条件的成交记录，自动生成待审核佣金单。
+     * <p>
+     * 处理规则：
+     * <ul>
+     *   <li>触发条件：全款到账或按揭已放款</li>
+     *   <li>去重：同一 dealId 已存在佣金记录则跳过</li>
+     *   <li>项目归属：优先取 customer_project 最早关联记录，若多项目会告警并取首条</li>
+     *   <li>结果：生成 auditStatus=待审核 的佣金单，沿用现有审批前端处理</li>
+     * </ul>
+     *
+     * @return 本次新生成的佣金单数量
+     */
+    @Transactional
+    public int autoCreatePendingCommissions() {
+        List<CustomerDeal> candidateDeals = customerDealMapper.selectList(
+                new LambdaQueryWrapper<CustomerDeal>()
+                        .and(w -> w.eq(CustomerDeal::getPaymentStatus, 2)
+                                .or()
+                                .eq(CustomerDeal::getLoanStatus, 2))
+                        .orderByAsc(CustomerDeal::getDealTime));
+
+        int created = 0;
+        for (CustomerDeal deal : candidateDeals) {
+            if (deal == null || deal.getId() == null) {
+                continue;
+            }
+            if (commissionExistsForDeal(deal.getId())) {
+                continue;
+            }
+
+            Customer customer = realtyCustomerMapper.selectById(deal.getCustomerId());
+            if (customer == null) {
+                log.warn("[佣金自动结算] 跳过 dealId={}：客户不存在 customerId={}", deal.getId(), deal.getCustomerId());
+                continue;
+            }
+
+            Long projectId = resolveProjectId(customer.getId(), deal.getId());
+            if (projectId == null) {
+                continue;
+            }
+
+            ProjectCommissionRule rule = projectService.getActiveCommissionRule(projectId);
+            if (rule == null) {
+                log.warn("[佣金自动结算] 跳过 dealId={}：项目 {} 没有生效中的佣金规则", deal.getId(), projectId);
+                continue;
+            }
+
+            int dealCount = countProjectDeals(projectId, deal.getDealTime());
+            CommissionCalculator.CalcResult calcResult =
+                    commissionCalculator.calculate(rule, deal.getDealAmount(), dealCount);
+            if (calcResult == null || !calcResult.isSuccess() || calcResult.getDetail() == null) {
+                log.warn("[佣金自动结算] 跳过 dealId={}：佣金计算失败，原因={}",
+                        deal.getId(), calcResult != null ? calcResult.getMessage() : "未知");
+                continue;
+            }
+
+            CommissionDetailDTO detail = calcResult.getDetail();
+            BigDecimal platformFee = nullToZero(detail.getPlatformReward());
+            BigDecimal payableAmount = nullToZero(detail.getBaseCommission())
+                    .add(nullToZero(detail.getJumpPointCommission()))
+                    .add(nullToZero(detail.getCashReward()))
+                    .add(nullToZero(detail.getFirstDealReward()));
+            BigDecimal receivableAmount = payableAmount.add(platformFee);
+
+            createAutoCommission(deal, customer, projectId, receivableAmount, payableAmount, platformFee, detail,
+                    calcResult.getManualConfirmItems());
+            created++;
+        }
+        log.info("[佣金自动结算] 本次自动生成 {} 条待审核佣金单", created);
+        return created;
+    }
+
+    /**
      * 查询佣金变更日志
      */
     public List<CommissionChangeLog> getChangeLogs(Long commissionId) {
@@ -275,6 +358,89 @@ public class CommissionService {
         return vo;
     }
 
+    private boolean commissionExistsForDeal(Long dealId) {
+        return commissionMapper.selectCount(
+                new LambdaQueryWrapper<Commission>().eq(Commission::getDealId, dealId)) > 0;
+    }
+
+    private Long resolveProjectId(Long customerId, Long dealId) {
+        List<CustomerProject> relations = customerProjectMapper.selectList(
+                new LambdaQueryWrapper<CustomerProject>()
+                        .eq(CustomerProject::getCustomerId, customerId)
+                        .orderByAsc(CustomerProject::getCreateTime)
+                        .orderByAsc(CustomerProject::getId));
+        if (relations == null || relations.isEmpty()) {
+            log.warn("[佣金自动结算] 跳过 dealId={}：客户 {} 没有关联项目", dealId, customerId);
+            return null;
+        }
+        if (relations.size() > 1) {
+            log.warn("[佣金自动结算] dealId={} 客户 {} 关联了 {} 个项目，自动取最早关联项目 {} 生成佣金",
+                    dealId, customerId, relations.size(), relations.get(0).getProjectId());
+        }
+        return relations.get(0).getProjectId();
+    }
+
+    private int countProjectDeals(Long projectId, LocalDateTime currentDealTime) {
+        List<CustomerProject> relations = customerProjectMapper.selectList(
+                new LambdaQueryWrapper<CustomerProject>().eq(CustomerProject::getProjectId, projectId));
+        if (relations == null || relations.isEmpty()) {
+            return 1;
+        }
+        List<Long> customerIds = relations.stream()
+                .map(CustomerProject::getCustomerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (customerIds.isEmpty()) {
+            return 1;
+        }
+        Long count = customerDealMapper.selectCount(
+                new LambdaQueryWrapper<CustomerDeal>()
+                        .in(CustomerDeal::getCustomerId, customerIds)
+                        .le(currentDealTime != null, CustomerDeal::getDealTime, currentDealTime));
+        return count == null || count < 1 ? 1 : count.intValue();
+    }
+
+    private void createAutoCommission(CustomerDeal deal,
+                                      Customer customer,
+                                      Long projectId,
+                                      BigDecimal receivableAmount,
+                                      BigDecimal payableAmount,
+                                      BigDecimal platformFee,
+                                      CommissionDetailDTO detail,
+                                      List<String> manualConfirmItems) {
+        Commission commission = Commission.builder()
+                .dealId(deal.getId())
+                .projectId(projectId)
+                .allianceId(customer.getAllianceId())
+                .receivableAmount(receivableAmount)
+                .payableAmount(payableAmount)
+                .platformFee(platformFee)
+                .auditStatus(AUDIT_STATUS_PENDING)
+                .auditRemark(buildAutoDraftRemark(manualConfirmItems))
+                .build();
+        commissionMapper.insert(commission);
+
+        commissionDetailMapper.insert(CommissionDetail.builder()
+                .commissionId(commission.getId())
+                .baseCommission(detail.getBaseCommission())
+                .jumpPointCommission(detail.getJumpPointCommission())
+                .cashReward(detail.getCashReward())
+                .firstDealReward(detail.getFirstDealReward())
+                .platformReward(detail.getPlatformReward())
+                .build());
+
+        eventPublisher.publishEvent(new DataChangeEvent(this, "create", "commission", commission.getId()));
+    }
+
+    private String buildAutoDraftRemark(List<String> manualConfirmItems) {
+        String prefix = "月末自动生成待审核佣金单";
+        if (manualConfirmItems == null || manualConfirmItems.isEmpty()) {
+            return prefix;
+        }
+        return prefix + "；需人工确认：" + String.join("；", manualConfirmItems);
+    }
+
     /**
      * 按用户与日期范围汇总已审核通过应结佣金（供绩效 auto_commission 指标拉数）
      */
@@ -305,5 +471,9 @@ public class CommissionService {
 
     private String toString(BigDecimal value) {
         return value != null ? value.toPlainString() : "null";
+    }
+
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 }

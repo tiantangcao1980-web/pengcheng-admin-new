@@ -7,6 +7,7 @@ import com.pengcheng.auth.LoginResult;
 import com.pengcheng.auth.LoginStrategy;
 import com.pengcheng.auth.enums.ClientType;
 import com.pengcheng.auth.enums.LoginType;
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.common.exception.BusinessException;
 import com.pengcheng.system.entity.SysUser;
 import com.pengcheng.system.helper.SystemConfigHelper;
@@ -14,11 +15,13 @@ import com.pengcheng.system.service.SysUserService;
 import com.pengcheng.wechat.WechatMiniProgramService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_MINI_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class MiniProgramLoginStrategy implements LoginStrategy {
 
     private final WechatMiniProgramService wechatMiniProgramService;

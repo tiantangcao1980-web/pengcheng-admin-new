@@ -1,11 +1,13 @@
 package com.pengcheng.admin.controller.pay;
 
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.pay.AlipayService;
 import com.pengcheng.pay.AlipayVerifyService;
 import com.pengcheng.realty.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,6 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/pay/alipay")
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.ALIPAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class AlipayNotifyController {
 
     private final AlipayVerifyService verifyService;

@@ -67,7 +67,7 @@
 | P1-2.6 | `AutomationService.executeAction` 重构为 SPI 分发表 | automation/service | - | ✅ | 附带：构造器注入 List<RuleActionHandler> |
 | P1-2.7 | 新建前端 API 层 `api/automation.ts` | pengcheng-ui | - | ✅ | 7 个端点封装 + 完整 TypeScript 类型 |
 | P1-3.1 | 核心业务 Controller 补 `@SaCheckPermission`：realty 5 + hr 3 + ai 1 + automation 1 = 10 Controller | pengcheng-api/** | 2d | ✅ | 覆盖全部写操作，40+ 端点注入权限码 |
-| P1-3.2 | 佣金自动结算定时任务 + 审批流前端 | commission | 2d | ⬜ | 月末 `@Scheduled` |
+| P1-3.2 | 佣金自动结算定时任务 + 审批流前端 | commission | 2d | ✅ | 月末 `@Scheduled` + 复用现有 [CommissionManage.vue](../pengcheng-ui/src/views/realty/commission/CommissionManage.vue) |
 
 **Sprint 2 小结**：工作量 ≈ 19.5 人日
 
@@ -98,13 +98,13 @@
 
 | # | 任务 | 负责域 | 预估 | 状态 | 备注 |
 |---|------|--------|------|------|------|
-| P3-1.1 | JaCoCo 配置 + CI 门禁（行覆盖率 45%） | pom / CI | 0.5d | ⬜ | |
-| P3-1.2 | 补 `CommissionCalculator` 单测（分账/跳点/奖励） | test | 1d | ⬜ | 目标 90% |
-| P3-1.3 | 补 `CustomerService` 单测（保护期/状态机/公海） | test | 1.5d | ⬜ | |
-| P3-1.4 | 补 `DataPermissionInterceptor` SQL 改写单测 | test | 1d | ⬜ | |
-| P3-1.5 | 补 `AttendanceServiceImpl` 单测 | test | 1d | ⬜ | |
-| P3-2.1 | Testcontainers 集成测试：支付回调幂等 | test | 1d | ⬜ | |
-| P3-2.2 | WebSocket 端到端集成测试 | test | 1d | ⬜ | |
+| P3-1.1 | JaCoCo 配置 + CI 门禁（行覆盖率 45%） | pom / CI | 0.5d | ✅ | 首批对 `pengcheng-realty` / `pengcheng-hr` 模块落地 45% 行覆盖率门禁，CI 切换到 `mvn verify` |
+| P3-1.2 | 补 `CommissionCalculator` 单测（分账/跳点/奖励） | test | 1d | ✅ | `CommissionCalculator` 行覆盖率 98.82%（84/85） |
+| P3-1.3 | 补 `CustomerService` 单测（保护期/状态机/公海） | test | 1.5d | ✅ | `CustomerService` / `CustomerPoolService` / `CustomerDealService` / `CustomerVisitService` 已补服务层单测 |
+| P3-1.4 | 补 `DataPermissionInterceptor` SQL 改写单测 | test | 1d | ✅ | `pengcheng-db` 已补 `DataPermissionInterceptorTest` 覆盖房产业务/通用数据权限过滤规则 |
+| P3-1.5 | 补 `AttendanceServiceImpl` 单测 | test | 1d | ✅ | `AttendanceServiceImplTest` 已覆盖打卡/请假/签到/月度汇总核心分支 |
+| P3-2.1 | Testcontainers 集成测试：支付回调幂等 | test | 1d | ✅ | 新增 `PaymentCallbackIdempotencyTest`；默认走 Testcontainers，本机支持 `-Dit.mysql.*` 外部库回退，已在临时 schema 实跑通过 |
+| P3-2.2 | WebSocket 端到端集成测试 | test | 1d | ✅ | 新增 `MessageWebSocketHandlerIntegrationTest`，在最小 WebSocket 应用中验证 `/ws/message` 的 connected / ping-pong / 私聊投递链路 |
 | P3-2.3 | REST Assured 契约测试 30 端点 | test | 2d | ⬜ | |
 | P3-3.1 | Playwright E2E 初始化 + 5 条核心旅程 | e2e | 3d | ⬜ | |
 | P3-4.1 | Prometheus Micrometer + Grafana 仪表盘 | infra | 2d | ⬜ | |
@@ -202,6 +202,8 @@
 | 2026-04-21 | P1-2.4/2.7 | ✅ | api/automation.ts + AutomationRule.vue 7 处 TODO 全部对接 | — |
 | 2026-04-21 | P1-2.5 | ✅ | AutomationEngineTest 8/8 全绿 | — |
 | 2026-04-21 | P1-3 | ✅ | 10 Controller 补 @SaCheckPermission（realty/hr/ai/automation），权限码规范 `{模块}:{资源}:{操作}`，admin-api BUILD SUCCESS，34/34 测试无回归 | — |
+| 2026-04-22 | P1-3.2 | ✅ | 月末自动结算任务：扫描全款到账/按揭放款成交，按项目佣金规则自动生成待审核佣金单；审批继续复用 `CommissionManage.vue` | — |
+| 2026-04-22 | P3-1.1 | ✅ | 根 `pom.xml` 接入 JaCoCo，CI 切换到 `mvn clean verify` 并上传覆盖率报告；`pengcheng-realty` / `pengcheng-hr` 模块本地 `verify` 已通过 45% 行覆盖率门禁 | — |
 | 2026-04-21 | P2-0.1 | ✅ | 依赖兼容矩阵核查：Sa-Token/MyBatis-Plus/Flyway 均已适配 Spring Boot 3.3 | — |
 | 2026-04-21 | P2-0.2 | ✅ | Spring Boot 3.2.2 → 3.3.5 升版（Micrometer 1.13.6 / Hibernate Validator 8.0.1） | — |
 | 2026-04-21 | P2-0.3 | ✅ | 全量 clean compile 14s + 34/34 测试零回归 | — |
@@ -210,6 +212,13 @@
 | 2026-04-21 | P0-2.6 / P0-2.7 | ✅ | 回款前端闭环：新增 `api/receivable.ts`、`views/realty/receivable/` 三子视图、路由 `/realty/receivable`、计划创建/到账登记/逾期看板全部接通 | — |
 | 2026-04-21 | P1-1.5 | ✅ | `Review360.vue` 对接任务分发、分页待办、真实用户/周期展示、结果汇总；同步修复 `/review/360/pending` 未读取当前登录人导致待办为空的问题 | — |
 | 2026-04-21 | 验证 | ✅ | `pengcheng-ui` 构建通过；`pengcheng-admin-api` compile 通过 | — |
-| 2026-04-21 | 验证 | ⚠️ | `vue-tsc --noEmit` 仍被仓库既有 `RequestConfig/axios` 类型基线问题阻塞；`KpiReview360ServiceTest` 在当前 Homebrew JDK 17 环境下因 Mockito inline agent 无法自附着而失败 | — |
+| 2026-04-21 | 验证 | ⚠️ | `vue-tsc --noEmit` 仍被仓库既有 `RequestConfig/axios` 类型基线问题阻塞 | — |
+| 2026-04-22 | P3-1.2 | ✅ | 新增 `CommissionCalculatorTest`，`CommissionCalculator` 行覆盖率提升到 98.82%（84/85） | — |
+| 2026-04-22 | P3-1.3 | ✅ | 新增 `CustomerServiceTest` / `CustomerPoolServiceTest` / `CustomerDealServiceTest` / `CustomerVisitServiceTest` / `ProjectServiceTest` 等服务层单测 | — |
+| 2026-04-22 | P3-1.4 | ✅ | 新增 `DataPermissionInterceptorTest`，验证驻场/联盟商负责人/总监/本部门/仅本人等数据权限 SQL 过滤规则 | — |
+| 2026-04-22 | P3-1.5 | ✅ | 新增 `AttendanceServiceImplTest`，覆盖打卡状态计算、请假校验、签到创建、月度汇总统计 | — |
+| 2026-04-22 | P3-2.1 | ✅ | 新增 `PaymentCallbackIdempotencyTest`，默认走 Testcontainers；针对本机 Docker Desktop 握手异常补了 `-Dit.mysql.*` 外部库回退，并在临时 `pengcheng_it_payment` schema 实跑验证重复 `notifyId` 只落一条审计日志、订单维持已付款 | — |
+| 2026-04-22 | P3-2.2 | ✅ | 新增 `MessageWebSocketHandlerIntegrationTest`，在最小 WebSocket 测试应用中验证 `/ws/message` 握手建立、`connected` 返回、`ping/pong` 和 A→B 私聊投递；同时剥离 DashScope / DataSource / PGVector 等无关自动配置噪音 | — |
+| 2026-04-22 | 验证 | ✅ | `pengcheng-realty` / `pengcheng-hr` 模块 `mvn verify` 已通过 45% 行覆盖率门禁；CI 覆盖率产物上传包含 `realty` / `hr`；Mockito 测试基线已切换为 subclass mock maker 并恢复 HR/Realty/AI 本地单测 | — |
 
 > 开发者每完成一个任务，在本表末尾追加一行；同时把上表对应 # 的"状态"列从 ⬜ 改为 ✅。

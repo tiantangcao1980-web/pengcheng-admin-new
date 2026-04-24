@@ -1,11 +1,13 @@
 package com.pengcheng.admin.controller.pay;
 
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.pay.WechatPayService;
 import com.pengcheng.pay.WechatPayVerifyService;
 import com.pengcheng.realty.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -17,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/pay/wechat")
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_PAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class WechatPayNotifyController {
 
     private final WechatPayVerifyService verifyService;

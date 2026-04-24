@@ -1,5 +1,6 @@
 package com.pengcheng.social.impl;
 
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.social.SocialLoginService;
 import com.pengcheng.system.helper.SystemConfigHelper;
 import cn.hutool.http.HttpUtil;
@@ -7,6 +8,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -18,6 +20,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_MINI_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class WechatMiniSocialLogin implements SocialLoginService {
 
     private final SystemConfigHelper configHelper;

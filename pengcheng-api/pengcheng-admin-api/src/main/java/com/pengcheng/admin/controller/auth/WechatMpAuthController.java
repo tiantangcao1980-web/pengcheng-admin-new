@@ -3,6 +3,7 @@ package com.pengcheng.admin.controller.auth;
 import cn.dev33.satoken.stp.StpUtil;
 import com.pengcheng.auth.LoginHelper;
 import com.pengcheng.auth.LoginResult;
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.social.SocialLoginService;
 import com.pengcheng.social.impl.WechatMpLogin;
@@ -10,6 +11,7 @@ import com.pengcheng.system.entity.SysUser;
 import com.pengcheng.system.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth/wechat-mp")
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_MP_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class WechatMpAuthController {
 
     private final WechatMpLogin wechatMpLogin;

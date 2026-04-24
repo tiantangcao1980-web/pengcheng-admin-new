@@ -2,13 +2,17 @@ package com.pengcheng.pay;
 
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.internal.util.AlipaySignature;
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.system.helper.SystemConfigHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 支付宝支付回调验签服务
@@ -17,9 +21,14 @@ import java.util.HashMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.ALIPAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class AlipayVerifyService {
 
     private final SystemConfigHelper configHelper;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String PROCESSED_NOTIFY_KEY_PREFIX = "pay:alipay:notify:";
+    private static final long PROCESSED_NOTIFY_TTL_HOURS = 24;
 
     /**
      * 验证支付宝回调签名
@@ -122,16 +131,34 @@ public class AlipayVerifyService {
      * 是否已处理过该通知（幂等性检查）
      */
     public boolean isProcessed(String notifyId) {
-        // TODO: 从 Redis 检查 notify_id 是否已处理
-        // 防止重复处理同一笔交易
-        return false;
+        if (notifyId == null || notifyId.isBlank()) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(PROCESSED_NOTIFY_KEY_PREFIX + notifyId));
+        } catch (Exception e) {
+            log.warn("支付宝回调幂等检查失败 notifyId={}", notifyId, e);
+            return false;
+        }
     }
 
     /**
      * 标记通知已处理
      */
     public void markProcessed(String notifyId) {
-        // TODO: 将 notify_id 存入 Redis，设置过期时间 24 小时
+        if (notifyId == null || notifyId.isBlank()) {
+            return;
+        }
+        try {
+            redisTemplate.opsForValue().set(
+                    PROCESSED_NOTIFY_KEY_PREFIX + notifyId,
+                    "1",
+                    PROCESSED_NOTIFY_TTL_HOURS,
+                    TimeUnit.HOURS
+            );
+        } catch (Exception e) {
+            log.warn("支付宝回调幂等标记失败 notifyId={}", notifyId, e);
+        }
     }
 
     /**

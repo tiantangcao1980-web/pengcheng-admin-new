@@ -1,5 +1,6 @@
 package com.pengcheng.social.impl;
 
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.social.SocialLoginService;
 import com.pengcheng.system.helper.SystemConfigHelper;
 import com.alipay.api.AlipayApiException;
@@ -11,6 +12,7 @@ import com.alipay.api.response.AlipaySystemOauthTokenResponse;
 import com.alipay.api.response.AlipayUserInfoShareResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.ALIPAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class AlipayLogin implements SocialLoginService {
     private final SystemConfigHelper configHelper;
     private static final String GATEWAY_URL = "https://openapi.alipay.com/gateway.do";

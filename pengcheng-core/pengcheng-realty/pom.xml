@@ -14,6 +14,10 @@
     <name>MasterLife Realty</name>
     <description>房产业务核心模块 - 客户管理、联盟商管理、成交佣金、付款申请、项目管理（考勤/假勤已迁至 pengcheng-hr）</description>
 
+    <properties>
+        <jacoco.skip>false</jacoco.skip>
+    </properties>
+
     <dependencies>
         <!-- 人事与假勤（考勤/签到等为公司级，realty 仅引用） -->
         <dependency>

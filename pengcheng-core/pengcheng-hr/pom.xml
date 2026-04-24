@@ -14,6 +14,10 @@
     <name>MasterLife HR</name>
     <description>人事与绩效公共服务模块 - 员工档案、人事异动、考核周期、KPI 指标、考核记录（公司级，不限于房产业务）</description>
 
+    <properties>
+        <jacoco.skip>false</jacoco.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.pengcheng</groupId>

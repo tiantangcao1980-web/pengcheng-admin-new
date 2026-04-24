@@ -1,8 +1,10 @@
 package com.pengcheng.pay;
 
+import com.pengcheng.common.feature.FeatureFlags;
 import com.pengcheng.system.helper.SystemConfigHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -18,6 +20,7 @@ import java.util.Base64;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = FeatureFlags.WECHAT_PAY_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class WechatPayVerifyService {
 
     private final SystemConfigHelper configHelper;

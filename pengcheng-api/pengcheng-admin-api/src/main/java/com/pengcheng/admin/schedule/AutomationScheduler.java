@@ -1,6 +1,7 @@
 package com.pengcheng.admin.schedule;
 
 import com.pengcheng.system.automation.service.AutomationService;
+import com.pengcheng.realty.commission.service.CommissionService;
 import com.pengcheng.system.calendar.entity.CalendarEvent;
 import com.pengcheng.system.calendar.service.CalendarService;
 import com.pengcheng.system.report.service.DailyReportService;
@@ -29,6 +30,7 @@ public class AutomationScheduler {
     private final SalesQualityService salesQualityService;
     private final HeartbeatService heartbeatService;
     private final ReceivableService receivableService;
+    private final CommissionService commissionService;
 
     /**
      * 每天 8:00 执行时间触发类规则
@@ -90,5 +92,15 @@ public class AutomationScheduler {
         log.info("[Receivable] 开始执行回款巡检...");
         int[] result = receivableService.runOverdueCheck();
         log.info("[Receivable] 巡检完成：新增逾期 {} 条，新增即将到期 {} 条", result[0], result[1]);
+    }
+
+    /**
+     * 每月最后一天 23:00 自动扫描满足结佣条件的成交，生成待审核佣金单。
+     */
+    @Scheduled(cron = "0 0 23 L * ?")
+    public void autoCreatePendingCommissions() {
+        log.info("[Commission] 开始执行月末自动结算扫描...");
+        int created = commissionService.autoCreatePendingCommissions();
+        log.info("[Commission] 自动结算扫描完成：新增待审核佣金 {} 条", created);
     }
 }

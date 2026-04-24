@@ -47,11 +47,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build with Maven
-        working-directory: pengcheng-admin
-        run: mvn clean package -DskipTests -B
-
-      - name: Run Tests
+      - name: Verify with Maven
         working-directory: pengcheng-admin
         env:
           SPRING_PROFILES_ACTIVE: test
@@ -62,7 +58,16 @@ jobs:
           DB_PASSWORD: test123456
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-        run: mvn test -B
+        run: mvn clean verify -B
+
+      - name: Upload Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: |
+            pengcheng-admin/pengcheng-core/pengcheng-realty/target/site/jacoco
+            pengcheng-admin/pengcheng-core/pengcheng-hr/target/site/jacoco
+          retention-days: 7
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
