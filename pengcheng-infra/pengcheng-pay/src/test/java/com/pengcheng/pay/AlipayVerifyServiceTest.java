@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,5 +53,26 @@ class AlipayVerifyServiceTest {
                 eq(24L),
                 eq(TimeUnit.HOURS)
         );
+    }
+
+    @Test
+    @DisplayName("verifyParams 要求 notify_id 为必填字段")
+    void verifyParamsRequiresNotifyId() {
+        Map<String, String> paramsWithoutNotifyId = Map.of(
+                "out_trade_no", "order-1",
+                "trade_no", "trade-1",
+                "trade_status", "TRADE_SUCCESS",
+                "total_amount", "0.01"
+        );
+        Map<String, String> paramsWithNotifyId = Map.of(
+                "notify_id", "notify-3",
+                "out_trade_no", "order-1",
+                "trade_no", "trade-1",
+                "trade_status", "TRADE_SUCCESS",
+                "total_amount", "0.01"
+        );
+
+        assertThat(service.verifyParams(paramsWithoutNotifyId)).isFalse();
+        assertThat(service.verifyParams(paramsWithNotifyId)).isTrue();
     }
 }

@@ -12,9 +12,13 @@ import java.util.Map;
 public class JpushPushService implements PushService {
 
     public static final String PROVIDER_TYPE = "jpush";
+    private final String appKey;
+    private final String masterSecret;
 
     public JpushPushService(String appKey, String masterSecret) {
-        log.info("初始化极光推送服务, appKey: {}", appKey);
+        this.appKey = appKey;
+        this.masterSecret = masterSecret;
+        log.info("初始化极光推送服务, appKey={}", PushLogSanitizer.maskIdentifier(appKey));
     }
 
     @Override
@@ -29,36 +33,36 @@ public class JpushPushService implements PushService {
 
     @Override
     public boolean pushToUser(String userId, String title, String content, Map<String, String> extras) {
-        // TODO: 实现极光推送API调用
-        log.info("【极光推送】推送给用户: {}, 标题: {}, 内容: {}", userId, title, content);
-        return true;
+        return failClosed("用户", userId, title, content, extras);
     }
 
     @Override
     public boolean pushToUsers(List<String> userIds, String title, String content, Map<String, String> extras) {
-        // TODO: 实现极光推送API调用
-        log.info("【极光推送】推送给多个用户: {}, 标题: {}, 内容: {}", userIds, title, content);
-        return true;
+        return failClosed("多用户", String.valueOf(userIds), title, content, extras);
     }
 
     @Override
     public boolean pushToAll(String title, String content, Map<String, String> extras) {
-        // TODO: 实现极光推送API调用
-        log.info("【极光推送】推送给所有用户, 标题: {}, 内容: {}", title, content);
-        return true;
+        return failClosed("全量", "ALL", title, content, extras);
     }
 
     @Override
     public boolean pushToTags(List<String> tags, String title, String content, Map<String, String> extras) {
-        // TODO: 实现极光推送API调用
-        log.info("【极光推送】推送给标签: {}, 标题: {}, 内容: {}", tags, title, content);
-        return true;
+        return failClosed("标签", String.valueOf(tags), title, content, extras);
     }
 
     @Override
     public boolean pushToDevice(String registrationId, String title, String content, Map<String, String> extras) {
-        // TODO: 实现极光推送API调用
-        log.info("【极光推送】推送给设备: {}, 标题: {}, 内容: {}", registrationId, title, content);
-        return true;
+        return failClosed("设备", PushLogSanitizer.maskIdentifier(registrationId), title, content, extras);
+    }
+
+    private boolean failClosed(String targetType, String target, String title, String content, Map<String, String> extras) {
+        if (appKey == null || appKey.isBlank() || masterSecret == null || masterSecret.isBlank()) {
+            log.error("【极光推送】配置不完整，拒绝发送: targetType={}, target={}", targetType, target);
+            return false;
+        }
+        log.error("【极光推送】未实现实际供应商调用，拒绝假成功: targetType={}, target={}, title={}, content={}, extras={}",
+                targetType, target, title, content, PushLogSanitizer.sanitizeExtras(extras));
+        return false;
     }
 }

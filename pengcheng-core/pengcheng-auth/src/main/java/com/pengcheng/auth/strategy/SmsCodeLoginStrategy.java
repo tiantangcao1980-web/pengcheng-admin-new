@@ -15,6 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 /**
  * 手机验证码登录策略（App端）
  * 手机号+短信验证码，未注册自动注册
@@ -23,6 +26,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class SmsCodeLoginStrategy implements LoginStrategy {
+
+    private static final SecureRandom PASSWORD_RANDOM = new SecureRandom();
 
     private final SysUserService userService;
     private final StringRedisTemplate redisTemplate;
@@ -80,12 +85,18 @@ public class SmsCodeLoginStrategy implements LoginStrategy {
         user.setUsername(phone);
         user.setPhone(phone);
         user.setNickname("用户" + phone.substring(7));
-        user.setPassword(BCrypt.hashpw("123456")); // 默认密码
+        user.setPassword(hashRandomPassword());
         user.setStatus(1);
         user.setGender(0);
         user.setUserType(userType);
         userService.save(user);
         log.info("手机号登录自动注册: phone={}, userType={}", phone, userType);
         return user;
+    }
+
+    private String hashRandomPassword() {
+        byte[] rawPassword = new byte[24];
+        PASSWORD_RANDOM.nextBytes(rawPassword);
+        return BCrypt.hashpw(Base64.getUrlEncoder().withoutPadding().encodeToString(rawPassword));
     }
 }

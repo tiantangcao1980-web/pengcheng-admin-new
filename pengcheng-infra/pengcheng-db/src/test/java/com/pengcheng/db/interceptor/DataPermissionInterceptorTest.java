@@ -23,12 +23,13 @@ class DataPermissionInterceptorTest {
     @DisplayName("房产业务角色过滤: 驻场 / 联盟商负责人 / 总监")
     void buildRealtyDataScopeFilterMatchesRoleRules() {
         FakeRoleMapper residentMapper = new FakeRoleMapper(List.of(role("resident", null)));
-        DataScope residentScope = scope("", "", "alliance_id", "project_id");
+        DataScope residentScope = scope("", "", "alliance_id", "id");
 
         String residentFilter = ReflectionTestUtils.invokeMethod(
                 interceptor, "buildRealtyDataScopeFilter", 99L, residentScope, residentMapper);
         assertThat(residentFilter)
-                .contains("project_id IN")
+                .contains("id IN")
+                .contains("SELECT cp.customer_id FROM customer_project cp")
                 .contains("contact_person = (SELECT nickname FROM sys_user WHERE id = 99)");
 
         FakeRoleMapper allianceManagerMapper = new FakeRoleMapper(List.of(role("alliance_manager", null)));
@@ -50,7 +51,16 @@ class DataPermissionInterceptorTest {
         FakeRoleMapper roleMapper = new FakeRoleMapper(List.of(role("guest", null)));
 
         String filter = ReflectionTestUtils.invokeMethod(
-                interceptor, "buildRealtyDataScopeFilter", 77L, scope("", "", "alliance_id", "project_id"), roleMapper);
+                interceptor, "buildRealtyDataScopeFilter", 77L, scope("", "", "alliance_id", "id"), roleMapper);
+
+        assertThat(filter).isEqualTo("1=0");
+    }
+
+    @Test
+    @DisplayName("房产业务角色过滤: 异常路径 fail closed")
+    void buildRealtyDataScopeFilterFailsClosedOnError() {
+        String filter = ReflectionTestUtils.invokeMethod(
+                interceptor, "buildRealtyDataScopeFilter", 55L, scope("", "", "alliance_id", "id"), new ExplodingRoleMapper());
 
         assertThat(filter).isEqualTo("1=0");
     }
@@ -89,6 +99,21 @@ class DataPermissionInterceptorTest {
                 userMapper
         );
         assertThat(allFilter).isEmpty();
+    }
+
+    @Test
+    @DisplayName("通用数据权限过滤: 异常路径 fail closed")
+    void buildDataScopeFilterFailsClosedOnError() {
+        String filter = ReflectionTestUtils.invokeMethod(
+                interceptor,
+                "buildDataScopeFilter",
+                44L,
+                scope("dept_id", "create_by", "", ""),
+                new ExplodingRoleMapper(),
+                new FakeUserMapper(user(300L))
+        );
+
+        assertThat(filter).isEqualTo("1=0");
     }
 
     @Test
@@ -167,6 +192,12 @@ class DataPermissionInterceptorTest {
 
         public List<FakeRole> selectRolesByUserId(Long userId) {
             return roles;
+        }
+    }
+
+    static class ExplodingRoleMapper {
+        public List<FakeRole> selectRolesByUserId(Long userId) {
+            throw new IllegalStateException("boom");
         }
     }
 

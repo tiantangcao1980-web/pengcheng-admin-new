@@ -203,17 +203,17 @@ async function saveModel(model: any) {
 }
 
 async function testModel(model: any) {
-  const close = message.loading(`正在测试 ${model.name} 连通性...`, { duration: 0 })
+  const loadingMessage = message.loading(`正在测试 ${model.name} 连通性...`, { duration: 0 })
   try {
     const res: any = await request({
       url: '/ai/config/test-connection',
       method: 'post',
       data: { modelName: model.name }
     })
-    close()
+    loadingMessage.destroy()
     message.success(res?.message || `${model.name} 连接正常`)
   } catch (e: any) {
-    close()
+    loadingMessage.destroy()
     message.error(e?.message || '测试失败')
   }
 }

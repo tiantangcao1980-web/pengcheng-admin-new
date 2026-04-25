@@ -3,6 +3,7 @@ package com.pengcheng.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pengcheng.crypto.CryptoService;
 import com.pengcheng.system.entity.SysServer;
 import com.pengcheng.system.mapper.SysServerMapper;
 import com.pengcheng.system.service.SysServerService;
@@ -13,6 +14,7 @@ import org.apache.sshd.client.session.ClientSession;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.io.Serializable;
 import java.time.Duration;
 
 /**
@@ -22,6 +24,8 @@ import java.time.Duration;
 @Service
 @RequiredArgsConstructor
 public class SysServerServiceImpl extends ServiceImpl<SysServerMapper, SysServer> implements SysServerService {
+
+    private final CryptoService cryptoService;
     
     @Override
     public Page<SysServer> pageList(Page<SysServer> page, String name, Integer status) {
@@ -32,13 +36,14 @@ public class SysServerServiceImpl extends ServiceImpl<SysServerMapper, SysServer
                .orderByDesc(SysServer::getCreateTime);
         
         Page<SysServer> result = this.page(page, wrapper);
-        // 清除敏感信息
-        result.getRecords().forEach(server -> {
-            server.setPassword(null);
-            server.setPrivateKey(null);
-            server.setPassphrase(null);
-        });
+        result.getRecords().forEach(this::maskSensitiveFields);
         return result;
+    }
+
+    @Override
+    public SysServer getById(Serializable id) {
+        SysServer server = super.getById(id);
+        return decryptSensitiveFields(server);
     }
     
     @Override
@@ -89,7 +94,7 @@ public class SysServerServiceImpl extends ServiceImpl<SysServerMapper, SysServer
     
     @Override
     public boolean save(SysServer entity) {
-        // TODO: 可以在这里对密码进行加密存储
+        encryptSensitiveFields(entity);
         return super.save(entity);
     }
     
@@ -102,6 +107,50 @@ public class SysServerServiceImpl extends ServiceImpl<SysServerMapper, SysServer
         if (!StringUtils.hasText(entity.getPrivateKey())) {
             entity.setPrivateKey(null);
         }
+        if (!StringUtils.hasText(entity.getPassphrase())) {
+            entity.setPassphrase(null);
+        }
+        encryptSensitiveFields(entity);
         return super.updateById(entity);
+    }
+
+    private void encryptSensitiveFields(SysServer server) {
+        if (server == null) {
+            return;
+        }
+        if (StringUtils.hasText(server.getPassword())) {
+            server.setPassword(cryptoService.encrypt(server.getPassword()));
+        }
+        if (StringUtils.hasText(server.getPrivateKey())) {
+            server.setPrivateKey(cryptoService.encrypt(server.getPrivateKey()));
+        }
+        if (StringUtils.hasText(server.getPassphrase())) {
+            server.setPassphrase(cryptoService.encrypt(server.getPassphrase()));
+        }
+    }
+
+    private SysServer decryptSensitiveFields(SysServer server) {
+        if (server == null) {
+            return null;
+        }
+        if (StringUtils.hasText(server.getPassword())) {
+            server.setPassword(cryptoService.decrypt(server.getPassword()));
+        }
+        if (StringUtils.hasText(server.getPrivateKey())) {
+            server.setPrivateKey(cryptoService.decrypt(server.getPrivateKey()));
+        }
+        if (StringUtils.hasText(server.getPassphrase())) {
+            server.setPassphrase(cryptoService.decrypt(server.getPassphrase()));
+        }
+        return server;
+    }
+
+    private void maskSensitiveFields(SysServer server) {
+        if (server == null) {
+            return;
+        }
+        server.setPassword(null);
+        server.setPrivateKey(null);
+        server.setPassphrase(null);
     }
 }

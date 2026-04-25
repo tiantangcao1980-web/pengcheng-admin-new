@@ -12,8 +12,10 @@ import com.pengcheng.realty.customer.dto.CustomerCreateDTO;
 import com.pengcheng.realty.customer.dto.CustomerCreateResultVO;
 import com.pengcheng.realty.customer.dto.CustomerQueryDTO;
 import com.pengcheng.realty.customer.dto.CustomerVO;
+import com.pengcheng.realty.customer.dto.PoolStatsVO;
 import com.pengcheng.realty.customer.entity.Customer;
 import com.pengcheng.realty.customer.entity.CustomerProject;
+import com.pengcheng.realty.customer.mapper.CustomerPoolEventLogMapper;
 import com.pengcheng.realty.customer.mapper.CustomerProjectMapper;
 import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
 import com.pengcheng.realty.project.entity.Project;
@@ -32,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,7 @@ class CustomerServiceTest {
 
     private RealtyCustomerMapper customerMapper;
     private CustomerProjectMapper customerProjectMapper;
+    private CustomerPoolEventLogMapper customerPoolEventLogMapper;
     private ProjectMapper projectMapper;
     private AllianceMapper allianceMapper;
     private ApplicationEventPublisher eventPublisher;
@@ -53,6 +55,7 @@ class CustomerServiceTest {
     void setUp() {
         customerMapper = mock(RealtyCustomerMapper.class);
         customerProjectMapper = mock(CustomerProjectMapper.class);
+        customerPoolEventLogMapper = mock(CustomerPoolEventLogMapper.class);
         projectMapper = mock(ProjectMapper.class);
         allianceMapper = mock(AllianceMapper.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
@@ -61,6 +64,7 @@ class CustomerServiceTest {
         service = new CustomerService(
                 customerMapper,
                 customerProjectMapper,
+                customerPoolEventLogMapper,
                 projectMapper,
                 allianceMapper,
                 eventPublisher
@@ -201,11 +205,16 @@ class CustomerServiceTest {
         when(projectMapper.selectList(any())).thenReturn(List.of(project));
         when(allianceMapper.selectList(any())).thenReturn(List.of(alliance));
         when(customerMapper.selectCount(any())).thenReturn(5L, 2L);
+        when(customerPoolEventLogMapper.selectCount(any())).thenReturn(3L, 1L);
 
         assertThat(service.searchProjects("望京")).extracting(Project::getProjectName).containsExactly("望京壹号");
         assertThat(service.searchAlliances("鹏诚")).extracting(Alliance::getCompanyName).containsExactly("鹏诚链家");
-        assertThat(service.getPoolStats().getTotal()).isEqualTo(5);
-        assertThat(service.getPoolStats().getTodayNew()).isEqualTo(2);
+        PoolStatsVO stats = service.getPoolStats();
+        assertThat(stats.getTotal()).isEqualTo(5);
+        assertThat(stats.getTodayNew()).isEqualTo(2);
+        assertThat(stats.getTodayClaimed()).isEqualTo(3);
+        assertThat(stats.getTodayRecycled()).isEqualTo(1);
+        verify(customerPoolEventLogMapper, times(2)).selectCount(any());
     }
 
     private CustomerCreateDTO validCreateDto() {

@@ -35,23 +35,22 @@ public class AlipayService extends AbstractPayService {
         result.put("orderNo", orderNo);
 
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            if (paymentConfig == null || paymentConfig.get("alipay") == null) {
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "alipay");
+            if (config == null) {
                 throw new RuntimeException("支付宝配置不存在");
             }
 
-            JsonNode config = paymentConfig.get("alipay");
-            boolean enabled = config.has("enabled") && config.get("enabled").asBoolean();
+            boolean enabled = PaymentConfigSupport.getBoolean(config, "enabled", false);
             if (!enabled) {
                 throw new RuntimeException("支付宝支付未启用");
             }
 
-            String appId = getConfigValue(config, "appId");
-            String privateKey = getConfigValue(config, "privateKey");
-            String publicKey = getConfigValue(config, "publicKey");
+            String appId = PaymentConfigSupport.getString(config, "appId");
+            String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+            String publicKey = PaymentConfigSupport.getString(config, "publicKey");
             String signType = config.has("signType") ? config.get("signType").asText() : "RSA2";
             String gatewayUrl = config.has("gatewayUrl") ? config.get("gatewayUrl").asText() : "https://openapi.alipay.com/gateway.do";
-            String notifyUrl = getConfigValue(config, "notifyUrl");
+            String notifyUrl = PaymentConfigSupport.getString(config, "notifyUrl");
 
             if (appId.isEmpty() || privateKey.isEmpty() || publicKey.isEmpty()) {
                 throw new RuntimeException("支付宝配置不完整，请检查AppID、应用私钥、支付宝公钥");
@@ -121,12 +120,14 @@ public class AlipayService extends AbstractPayService {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            JsonNode config = paymentConfig.get("alipay");
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "alipay");
+            if (config == null) {
+                throw new RuntimeException("支付宝配置不存在");
+            }
             
-            String appId = getConfigValue(config, "appId");
-            String privateKey = getConfigValue(config, "privateKey");
-            String publicKey = getConfigValue(config, "publicKey");
+            String appId = PaymentConfigSupport.getString(config, "appId");
+            String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+            String publicKey = PaymentConfigSupport.getString(config, "publicKey");
             String gatewayUrl = config.has("gatewayUrl") ? 
                 config.get("gatewayUrl").asText() : "https://openapi.alipay.com/gateway.do";
             
@@ -169,12 +170,14 @@ public class AlipayService extends AbstractPayService {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            JsonNode config = paymentConfig.get("alipay");
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "alipay");
+            if (config == null) {
+                throw new RuntimeException("支付宝配置不存在");
+            }
             
-            String appId = getConfigValue(config, "appId");
-            String privateKey = getConfigValue(config, "privateKey");
-            String publicKey = getConfigValue(config, "publicKey");
+            String appId = PaymentConfigSupport.getString(config, "appId");
+            String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+            String publicKey = PaymentConfigSupport.getString(config, "publicKey");
             String gatewayUrl = config.has("gatewayUrl") ? 
                 config.get("gatewayUrl").asText() : "https://openapi.alipay.com/gateway.do";
             
@@ -212,7 +215,4 @@ public class AlipayService extends AbstractPayService {
         return result;
     }
 
-    private String getConfigValue(JsonNode config, String key) {
-        return config.has(key) && !config.get(key).isNull() ? config.get(key).asText() : "";
-    }
 }

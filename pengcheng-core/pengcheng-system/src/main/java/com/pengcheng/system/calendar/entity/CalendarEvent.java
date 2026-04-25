@@ -33,6 +33,9 @@ public class CalendarEvent {
     private Long customerId;
     private Long projectId;
     private String location;
+    private Integer meetingType;
+    private String meetingUrl;
+    private Long organizerId;
     private Integer reminderMinutes;
     private Boolean reminderSent;
 

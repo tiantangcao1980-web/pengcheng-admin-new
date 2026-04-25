@@ -1,10 +1,17 @@
 package com.pengcheng.realty.customer.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pengcheng.realty.customer.dto.PoolRecycleConfigDTO;
 import com.pengcheng.realty.customer.entity.Customer;
+import com.pengcheng.realty.customer.entity.CustomerPoolEventLog;
+import com.pengcheng.realty.customer.mapper.CustomerPoolEventLogMapper;
 import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
+import com.pengcheng.system.entity.SysConfigGroup;
+import com.pengcheng.system.service.SysConfigGroupService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +28,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomerPoolService {
 
+    static final String CONFIG_GROUP_CODE = "customerPoolConfig";
+
     private final RealtyCustomerMapper customerMapper;
+    private final CustomerPoolEventLogMapper customerPoolEventLogMapper;
+    private final SysConfigGroupService configGroupService;
+    private final ObjectMapper objectMapper;
 
     /** 池类型：公海 */
     public static final int POOL_PUBLIC = 1;
@@ -46,6 +58,14 @@ public class CustomerPoolService {
     private volatile int noFollowDays = DEFAULT_NO_FOLLOW_DAYS;
     private volatile int noVisitDays = DEFAULT_NO_VISIT_DAYS;
 
+    @PostConstruct
+    void loadRecycleConfig() {
+        PoolRecycleConfigDTO config = readRecycleConfig();
+        this.noFollowDays = normalizeConfigValue(config.getNoFollowDays(), DEFAULT_NO_FOLLOW_DAYS);
+        this.noVisitDays = normalizeConfigValue(config.getNoVisitDays(), DEFAULT_NO_VISIT_DAYS);
+        log.info("已加载公海池回收规则: noFollowDays={}, noVisitDays={}", noFollowDays, noVisitDays);
+    }
+
     /**
      * 获取当前无跟进回收天数配置
      */
@@ -64,12 +84,22 @@ public class CustomerPoolService {
      * 更新回收规则配置
      */
     public void updateRecycleConfig(Integer noFollowDays, Integer noVisitDays) {
-        if (noFollowDays != null && noFollowDays > 0) {
-            this.noFollowDays = noFollowDays;
+        PoolRecycleConfigDTO currentConfig = readRecycleConfig();
+        PoolRecycleConfigDTO targetConfig = PoolRecycleConfigDTO.builder()
+                .noFollowDays(resolveConfigValue(noFollowDays, currentConfig.getNoFollowDays(), DEFAULT_NO_FOLLOW_DAYS))
+                .noVisitDays(resolveConfigValue(noVisitDays, currentConfig.getNoVisitDays(), DEFAULT_NO_VISIT_DAYS))
+                .protectionDays(resolveConfigValue(null, currentConfig.getProtectionDays(), DEFAULT_PROTECTION_DAYS))
+                .autoRecycleEnabled(currentConfig.getAutoRecycleEnabled() != null ? currentConfig.getAutoRecycleEnabled() : Boolean.TRUE)
+                .build();
+
+        try {
+            configGroupService.saveConfig(CONFIG_GROUP_CODE, objectMapper.writeValueAsString(targetConfig));
+        } catch (Exception e) {
+            throw new IllegalStateException("保存公海池回收规则失败", e);
         }
-        if (noVisitDays != null && noVisitDays > 0) {
-            this.noVisitDays = noVisitDays;
-        }
+
+        this.noFollowDays = targetConfig.getNoFollowDays();
+        this.noVisitDays = targetConfig.getNoVisitDays();
         log.info("回收规则已更新: noFollowDays={}, noVisitDays={}", this.noFollowDays, this.noVisitDays);
     }
 
@@ -120,14 +150,21 @@ public class CustomerPoolService {
 
             for (Customer customer : candidates) {
                 // 使用乐观锁：基于 updateTime 确保并发安全
-                LambdaUpdateWrapper<Customer> updateWrapper = new LambdaUpdateWrapper<>();
-                updateWrapper.eq(Customer::getId, customer.getId())
-                        .eq(Customer::getPoolType, POOL_PRIVATE) // 确保仍在私海
-                        .eq(Customer::getUpdateTime, customer.getUpdateTime()) // 乐观锁
-                        .set(Customer::getPoolType, POOL_PUBLIC);
+                UpdateWrapper<Customer> updateWrapper = new UpdateWrapper<>();
+                updateWrapper.eq("id", customer.getId())
+                        .eq("pool_type", POOL_PRIVATE) // 确保仍在私海
+                        .eq("update_time", customer.getUpdateTime()) // 乐观锁
+                        .set("pool_type", POOL_PUBLIC);
 
                 int updated = customerMapper.update(null, updateWrapper);
                 if (updated > 0) {
+                    customerPoolEventLogMapper.insert(CustomerPoolEventLog.builder()
+                            .customerId(customer.getId())
+                            .eventType(CustomerPoolEventLog.EVENT_TYPE_RECYCLE)
+                            .eventSource(CustomerPoolEventLog.EVENT_SOURCE_AUTO)
+                            .eventTime(now)
+                            .remark("auto recycle to public pool")
+                            .build());
                     totalRecycled++;
                     log.debug("客户已回收至公海池: customerId={}", customer.getId());
                 }
@@ -175,7 +212,59 @@ public class CustomerPoolService {
         customer.setCreatorId(userId);
 
         customerMapper.updateById(customer);
+        customerPoolEventLogMapper.insert(CustomerPoolEventLog.builder()
+                .customerId(customerId)
+                .eventType(CustomerPoolEventLog.EVENT_TYPE_CLAIM)
+                .eventSource(CustomerPoolEventLog.EVENT_SOURCE_MANUAL)
+                .operatorId(userId)
+                .eventTime(now)
+                .remark("claim from public pool")
+                .build());
         log.info("客户已从公海池领取: customerId={}, userId={}", customerId, userId);
+    }
+
+    private PoolRecycleConfigDTO readRecycleConfig() {
+        try {
+            SysConfigGroup configGroup = configGroupService.getByGroupCode(CONFIG_GROUP_CODE);
+            if (configGroup == null || configGroup.getConfigValue() == null || configGroup.getConfigValue().isBlank()) {
+                return defaultConfig();
+            }
+
+            PoolRecycleConfigDTO config = objectMapper.readValue(configGroup.getConfigValue(), PoolRecycleConfigDTO.class);
+            if (config == null) {
+                return defaultConfig();
+            }
+            if (config.getProtectionDays() == null) {
+                config.setProtectionDays(DEFAULT_PROTECTION_DAYS);
+            }
+            if (config.getAutoRecycleEnabled() == null) {
+                config.setAutoRecycleEnabled(Boolean.TRUE);
+            }
+            return config;
+        } catch (Exception e) {
+            log.warn("读取公海池回收规则失败，回退默认配置", e);
+            return defaultConfig();
+        }
+    }
+
+    private PoolRecycleConfigDTO defaultConfig() {
+        return PoolRecycleConfigDTO.builder()
+                .noFollowDays(DEFAULT_NO_FOLLOW_DAYS)
+                .noVisitDays(DEFAULT_NO_VISIT_DAYS)
+                .protectionDays(DEFAULT_PROTECTION_DAYS)
+                .autoRecycleEnabled(Boolean.TRUE)
+                .build();
+    }
+
+    private int resolveConfigValue(Integer incomingValue, Integer storedValue, int defaultValue) {
+        if (incomingValue != null && incomingValue > 0) {
+            return incomingValue;
+        }
+        return normalizeConfigValue(storedValue, defaultValue);
+    }
+
+    private int normalizeConfigValue(Integer value, int defaultValue) {
+        return value != null && value > 0 ? value : defaultValue;
     }
 
     /**

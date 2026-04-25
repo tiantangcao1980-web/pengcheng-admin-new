@@ -38,7 +38,7 @@
         </n-form>
       </div>
       
-      <n-data-table :columns="columns" :data="keys" :loading="keysLoading" :row-key="(row: string) => row" />
+      <n-data-table :columns="columns" :data="keyRows" :loading="keysLoading" :row-key="(row: CacheKeyRow) => row.key" />
     </n-card>
 
     <n-modal v-model:show="detailVisible" preset="card" title="缓存详情" style="width: 800px">
@@ -90,6 +90,12 @@ const pagedKeys = computed(() => {
   return keys.value.slice(start, end)
 })
 
+interface CacheKeyRow {
+  key: string
+}
+
+const keyRows = computed<CacheKeyRow[]>(() => pagedKeys.value.map(key => ({ key })))
+
 // 详情相关
 const detailVisible = ref(false)
 const detailLoading = ref(false)
@@ -105,15 +111,15 @@ const cacheDetail = ref<{
   ttl: -1
 })
 
-const columns: DataTableColumns<string> = [
-  { title: '键名', key: 'key', render(row) { return h('span', { style: 'word-break: break-all;' }, row) }},
+const columns: DataTableColumns<CacheKeyRow> = [
+  { title: '键名', key: 'key', render(row) { return h('span', { style: 'word-break: break-all;' }, row.key) }},
   { title: '操作', key: 'actions', width: 180, render(row) {
     return h(NSpace, null, {
       default: () => [
-        h(NButton, { size: 'small', quaternary: true, type: 'primary', onClick: () => handleView(row) }, {
+        h(NButton, { size: 'small', quaternary: true, type: 'primary', onClick: () => handleView(row.key) }, {
           default: () => [h(NIcon, null, { default: () => h(EyeOutline) }), ' 查看']
         }),
-        h(NButton, { size: 'small', quaternary: true, type: 'error', onClick: () => handleDelete(row) }, {
+        h(NButton, { size: 'small', quaternary: true, type: 'error', onClick: () => handleDelete(row.key) }, {
           default: () => [h(NIcon, null, { default: () => h(TrashOutline) }), ' 删除']
         })
       ]
