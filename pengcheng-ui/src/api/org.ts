@@ -72,6 +72,38 @@ export const postApi = {
   }
 }
 
+// ==================== 组织邀请 ====================
+export interface OrgInvite {
+  id?: number
+  inviteCode: string
+  email?: string
+  phone?: string
+  roleIds?: string
+  roleIdList?: number[]
+  deptId?: number
+  status: number
+  expiresAt: string
+  acceptedUserId?: number
+  acceptedAt?: string
+  createBy?: number
+  createTime?: string
+}
+
+export const orgInviteApi = {
+  list(params?: { status?: number }): Promise<OrgInvite[]> {
+    return request({ url: '/sys/org/invite/list', method: 'get', params })
+  },
+  create(data: { email?: string; phone?: string; roleIds?: number[]; deptId?: number; expiresAt?: string }): Promise<OrgInvite> {
+    return request({ url: '/sys/org/invite', method: 'post', data })
+  },
+  revoke(id: number): Promise<void> {
+    return request({ url: `/sys/org/invite/${id}/revoke`, method: 'post' })
+  },
+  accept(code: string): Promise<OrgInvite> {
+    return request({ url: '/sys/org/invite/accept', method: 'post', data: { code } })
+  }
+}
+
 // ==================== 字典类型 ====================
 export interface SysDictType {
   id?: number

@@ -1,5 +1,39 @@
 import { request } from '@/utils/request'
 
+export interface HrPeriod {
+  id?: number
+  name: string
+  periodType: number
+  year: number
+  startDate?: string
+  endDate?: string
+  targetScore?: number
+  status?: number
+}
+
+export interface HrKpiTemplate {
+  id?: number
+  name: string
+  code: string
+  category: number
+  weight: number
+  dataSource?: string
+  formula?: string
+  enabled: boolean
+}
+
+export interface HrKpiScore {
+  id?: number
+  periodId?: number
+  userId?: number
+  templateId?: number
+  targetValue?: number
+  actualValue?: number
+  score?: number
+  weightedScore?: number
+  remark?: string
+}
+
 /** 员工档案 */
 export const hrProfileApi = {
   get: (userId: number) => request({ url: `/admin/hr/employee/profile/${userId}`, method: 'get' }),

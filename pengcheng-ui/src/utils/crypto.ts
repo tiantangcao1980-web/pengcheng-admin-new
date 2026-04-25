@@ -82,7 +82,7 @@ export async function encryptPasswordFields<T extends Record<string, any>>(
     return data
   }
   
-  const result = { ...data }
+  const result: Record<string, any> = { ...data }
   
   for (const field of fields) {
     if (result[field] && typeof result[field] === 'string') {
@@ -90,7 +90,7 @@ export async function encryptPasswordFields<T extends Record<string, any>>(
     }
   }
   
-  return result
+  return result as T
 }
 
 /**

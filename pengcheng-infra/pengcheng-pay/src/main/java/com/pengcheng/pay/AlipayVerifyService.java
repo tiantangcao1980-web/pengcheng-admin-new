@@ -38,8 +38,7 @@ public class AlipayVerifyService {
      */
     public boolean verifySignature(Map<String, String> params) {
         try {
-            // 获取支付宝公钥
-            String alipayPublicKey = configHelper.getString("alipay", "publicKey");
+            String alipayPublicKey = PaymentConfigSupport.getProviderString(configHelper, "alipay", "publicKey", null);
             if (alipayPublicKey == null || alipayPublicKey.isEmpty()) {
                 log.error("支付宝公钥未配置");
                 return false;
@@ -83,7 +82,7 @@ public class AlipayVerifyService {
      */
     public boolean verifyParams(Map<String, String> params) {
         // 必选参数检查
-        String[] requiredFields = {"out_trade_no", "trade_no", "trade_status", "total_amount"};
+        String[] requiredFields = {"notify_id", "out_trade_no", "trade_no", "trade_status", "total_amount"};
         
         for (String field : requiredFields) {
             if (!params.containsKey(field) || params.get(field) == null || params.get(field).isEmpty()) {

@@ -287,7 +287,15 @@ const resultOptions = [
   { label: '失败', value: 0 }
 ]
 
-const ruleTemplates = [
+type TagType = 'default' | 'primary' | 'info' | 'success' | 'warning' | 'error'
+
+const ruleTemplates: Array<{
+  id: number
+  name: string
+  description: string
+  module: string
+  moduleType: TagType
+}> = [
   { id: 1, name: '新客户自动分配', description: '新客户报备后自动分配给销售负责人', module: '客户管理', moduleType: 'success' },
   { id: 2, name: '会议前提醒', description: '会议开始前发送提醒通知', module: '会议日程', moduleType: 'info' },
   { id: 3, name: '成交祝贺', description: '客户成交后发送祝贺通知', module: '客户管理', moduleType: 'success' },

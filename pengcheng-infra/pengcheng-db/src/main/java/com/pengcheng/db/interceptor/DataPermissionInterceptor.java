@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 import com.pengcheng.common.annotation.DataScope;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -24,8 +25,11 @@ import java.util.List;
 /**
  * 数据权限拦截器 (支持通用部门权限 + 房产业务角色权限)
  */
+@Slf4j
 @Component
 public class DataPermissionInterceptor implements InnerInterceptor, ApplicationContextAware {
+
+    private static final String DENY_ALL_FILTER = "1=0";
 
     private ApplicationContext applicationContext;
 
@@ -141,7 +145,7 @@ public class DataPermissionInterceptor implements InnerInterceptor, ApplicationC
             Method selectRoles = roleMapper.getClass().getMethod("selectRolesByUserId", Long.class);
             List<?> roles = (List<?>) selectRoles.invoke(roleMapper, userId);
             if (CollectionUtils.isEmpty(roles)) {
-                return "1=0";
+                return DENY_ALL_FILTER;
             }
 
             List<String> roleCodes = new ArrayList<>();
@@ -166,9 +170,9 @@ public class DataPermissionInterceptor implements InnerInterceptor, ApplicationC
             // 驻场角色：仅负责项目的客户
             if (roleCodes.contains(ROLE_RESIDENT) && StringUtils.hasText(dataScope.projectAlias())) {
                 String projectAlias = dataScope.projectAlias();
-                // 通过 customer_project 中间表关联，筛选驻场人员负责的项目
+                // 通过 customer.id -> customer_project.customer_id -> project 关联筛选驻场负责项目的客户
                 conditions.add(projectAlias + " IN ("
-                        + "SELECT cp.project_id FROM customer_project cp "
+                        + "SELECT cp.customer_id FROM customer_project cp "
                         + "INNER JOIN project p ON cp.project_id = p.id "
                         + "WHERE p.contact_person = (SELECT nickname FROM sys_user WHERE id = " + userId + ")"
                         + " AND p.deleted = 0"
@@ -195,12 +199,13 @@ public class DataPermissionInterceptor implements InnerInterceptor, ApplicationC
 
             if (conditions.isEmpty()) {
                 // 角色不匹配任何规则时，拒绝访问
-                return "1=0";
+                return DENY_ALL_FILTER;
             }
 
             return "(" + String.join(" OR ", conditions) + ")";
         } catch (Exception e) {
-            return "1=0";
+            log.warn("构建房产业务数据权限过滤失败，按拒绝访问处理: userId={}", userId, e);
+            return DENY_ALL_FILTER;
         }
     }
 
@@ -211,7 +216,7 @@ public class DataPermissionInterceptor implements InnerInterceptor, ApplicationC
         try {
             Method selectRoles = roleMapper.getClass().getMethod("selectRolesByUserId", Long.class);
             List<?> roles = (List<?>) selectRoles.invoke(roleMapper, userId);
-            if (CollectionUtils.isEmpty(roles)) return "1=0";
+            if (CollectionUtils.isEmpty(roles)) return DENY_ALL_FILTER;
 
             List<String> conditions = new ArrayList<>();
             Long userDeptId = null;
@@ -241,9 +246,10 @@ public class DataPermissionInterceptor implements InnerInterceptor, ApplicationC
                     conditions.add(userAlias + " = " + userId);
                 }
             }
-            return conditions.isEmpty() ? "" : "(" + String.join(" OR ", conditions) + ")";
+            return conditions.isEmpty() ? DENY_ALL_FILTER : "(" + String.join(" OR ", conditions) + ")";
         } catch (Exception e) {
-            return "";
+            log.warn("构建通用数据权限过滤失败，按拒绝访问处理: userId={}", userId, e);
+            return DENY_ALL_FILTER;
         }
     }
 }

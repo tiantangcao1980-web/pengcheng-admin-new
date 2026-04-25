@@ -301,7 +301,8 @@ const bizStats = ref({
 const aiInsights = ref<Array<{ icon: string; content: string; level: string }>>([])
 
 const userRole = computed(() => {
-  const roles = userStore.user?.roles || userStore.user?.roleIds || []
+  const user = userStore.user as typeof userStore.user & { roles?: unknown[]; roleIds?: unknown[] }
+  const roles = user?.roles || user?.roleIds || userStore.roles || []
   if (Array.isArray(roles)) {
     const roleNames = roles.map((r: any) => typeof r === 'string' ? r : r.roleKey || r.roleName || '')
     if (roleNames.some((r: string) => ['admin', 'super_admin'].includes(r))) return 'admin'

@@ -18,11 +18,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = FeatureFlags.WECHAT_MINI_PREFIX, name = FeatureFlags.ENABLED, havingValue = "true")
 public class MiniProgramLoginStrategy implements LoginStrategy {
+
+    private static final SecureRandom PASSWORD_RANDOM = new SecureRandom();
 
     private final WechatMiniProgramService wechatMiniProgramService;
     private final SysUserService userService;
@@ -89,12 +94,18 @@ public class MiniProgramLoginStrategy implements LoginStrategy {
         SysUser user = new SysUser();
         user.setUsername("wx_" + openId.substring(0, Math.min(openId.length(), 10)));
         user.setNickname("微信用户");
-        user.setPassword(BCrypt.hashpw("123456")); // 默认密码
+        user.setPassword(hashRandomPassword());
         user.setOpenId(openId);
         user.setStatus(1);
         user.setGender(0);
         user.setUserType("app");
         userService.save(user);
         return user;
+    }
+
+    private String hashRandomPassword() {
+        byte[] rawPassword = new byte[24];
+        PASSWORD_RANDOM.nextBytes(rawPassword);
+        return BCrypt.hashpw(Base64.getUrlEncoder().withoutPadding().encodeToString(rawPassword));
     }
 }

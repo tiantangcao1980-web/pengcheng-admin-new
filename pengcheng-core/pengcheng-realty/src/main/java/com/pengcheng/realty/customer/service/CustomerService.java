@@ -15,7 +15,9 @@ import com.pengcheng.realty.customer.dto.CustomerCreateResultVO;
 import com.pengcheng.realty.customer.dto.CustomerQueryDTO;
 import com.pengcheng.realty.customer.dto.CustomerVO;
 import com.pengcheng.realty.customer.entity.Customer;
+import com.pengcheng.realty.customer.entity.CustomerPoolEventLog;
 import com.pengcheng.realty.customer.entity.CustomerProject;
+import com.pengcheng.realty.customer.mapper.CustomerPoolEventLogMapper;
 import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
 import com.pengcheng.realty.customer.mapper.CustomerProjectMapper;
 import com.pengcheng.realty.project.entity.Project;
@@ -32,7 +34,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 客户报备管理服务
@@ -44,6 +46,7 @@ public class CustomerService {
 
     private final RealtyCustomerMapper customerMapper;
     private final CustomerProjectMapper customerProjectMapper;
+    private final CustomerPoolEventLogMapper customerPoolEventLogMapper;
     private final ProjectMapper projectMapper;
     private final AllianceMapper allianceMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -56,6 +59,8 @@ public class CustomerService {
 
     /** 默认保护期天数 */
     private static final int DEFAULT_PROTECTION_DAYS = 3;
+    private static final DateTimeFormatter REPORT_NO_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final AtomicLong REPORT_NO_SEQUENCE = new AtomicLong();
 
     /**
      * 创建客户报备（集成 AI 智能判客）
@@ -275,12 +280,12 @@ public class CustomerService {
     }
 
     /**
-     * 生成唯一报备编号：BP + 年月日时分秒 + 4 位随机数
+     * 生成唯一报备编号：BP + 年月日时分秒毫秒 + 单调序列
      */
     public String generateReportNo() {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int random = ThreadLocalRandom.current().nextInt(1000, 10000);
-        return "BP" + timestamp + random;
+        String timestamp = LocalDateTime.now().format(REPORT_NO_FORMATTER);
+        long sequence = REPORT_NO_SEQUENCE.incrementAndGet();
+        return "BP" + timestamp + String.format("%06d", sequence);
     }
 
     /**
@@ -333,11 +338,20 @@ public class CustomerService {
                         .ge(Customer::getCreateTime, todayStart));
 
         // 今日领取和回收需要查询操作日志，这里简化处理
+        long todayClaimed = customerPoolEventLogMapper.selectCount(
+                new LambdaQueryWrapper<CustomerPoolEventLog>()
+                        .eq(CustomerPoolEventLog::getEventType, CustomerPoolEventLog.EVENT_TYPE_CLAIM)
+                        .ge(CustomerPoolEventLog::getEventTime, todayStart));
+        long todayRecycled = customerPoolEventLogMapper.selectCount(
+                new LambdaQueryWrapper<CustomerPoolEventLog>()
+                        .eq(CustomerPoolEventLog::getEventType, CustomerPoolEventLog.EVENT_TYPE_RECYCLE)
+                        .ge(CustomerPoolEventLog::getEventTime, todayStart));
+
         return com.pengcheng.realty.customer.dto.PoolStatsVO.builder()
                 .total((int) total)
                 .todayNew((int) todayNew)
-                .todayClaimed(0)
-                .todayRecycled(0)
+                .todayClaimed((int) todayClaimed)
+                .todayRecycled((int) todayRecycled)
                 .build();
     }
 }

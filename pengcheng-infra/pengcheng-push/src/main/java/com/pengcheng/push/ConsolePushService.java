@@ -28,7 +28,7 @@ public class ConsolePushService implements PushService {
         log.info("【控制台推送】推送给用户: {}", userId);
         log.info("  标题: {}", title);
         log.info("  内容: {}", content);
-        log.info("  扩展: {}", extras);
+        log.info("  扩展: {}", PushLogSanitizer.sanitizeExtras(extras));
         return true;
     }
 
@@ -37,7 +37,7 @@ public class ConsolePushService implements PushService {
         log.info("【控制台推送】推送给多个用户: {}", userIds);
         log.info("  标题: {}", title);
         log.info("  内容: {}", content);
-        log.info("  扩展: {}", extras);
+        log.info("  扩展: {}", PushLogSanitizer.sanitizeExtras(extras));
         return true;
     }
 
@@ -46,7 +46,7 @@ public class ConsolePushService implements PushService {
         log.info("【控制台推送】推送给所有用户");
         log.info("  标题: {}", title);
         log.info("  内容: {}", content);
-        log.info("  扩展: {}", extras);
+        log.info("  扩展: {}", PushLogSanitizer.sanitizeExtras(extras));
         return true;
     }
 
@@ -55,16 +55,16 @@ public class ConsolePushService implements PushService {
         log.info("【控制台推送】推送给标签: {}", tags);
         log.info("  标题: {}", title);
         log.info("  内容: {}", content);
-        log.info("  扩展: {}", extras);
+        log.info("  扩展: {}", PushLogSanitizer.sanitizeExtras(extras));
         return true;
     }
 
     @Override
     public boolean pushToDevice(String registrationId, String title, String content, Map<String, String> extras) {
-        log.info("【控制台推送】推送给设备: {}", registrationId);
+        log.info("【控制台推送】推送给设备: {}", PushLogSanitizer.maskIdentifier(registrationId));
         log.info("  标题: {}", title);
         log.info("  内容: {}", content);
-        log.info("  扩展: {}", extras);
+        log.info("  扩展: {}", PushLogSanitizer.sanitizeExtras(extras));
         return true;
     }
 }

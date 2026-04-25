@@ -22,64 +22,20 @@ public class TencentSmsService implements SmsService {
         String appId = configHelper.getSmsTencentAppId();
         String signName = configHelper.getSmsTencentSignName();
         String templateId = configHelper.getSmsTencentTemplateId();
+        String maskedPhone = SmsLogSanitizer.maskPhone(phone);
 
         if (secretId.isEmpty() || secretKey.isEmpty()) {
-            log.warn("腾讯云短信配置不完整，使用控制台打印模式");
-            log.info("============================================");
-            log.info("【短信验证码 - 腾讯云(未配置)】");
-            log.info("手机号: {}", phone);
-            log.info("验证码: {}", code);
-            log.info("有效期: 5分钟");
-            log.info("============================================");
-            return true;
+            log.error("腾讯云短信配置不完整，拒绝发送: phone={}, appId={}, signName={}, templateId={}",
+                    maskedPhone, appId, signName, templateId);
+            return false;
         }
 
         try {
-            // TODO: 实际调用腾讯云短信API
-            // 参考文档: https://cloud.tencent.com/document/product/382/43194
-            // 1. 引入依赖 tencentcloud-sdk-java
-            // 2. 构建请求发送短信
-
-            /*
-            Credential cred = new Credential(secretId, secretKey);
-            HttpProfile httpProfile = new HttpProfile();
-            httpProfile.setEndpoint("sms.tencentcloudapi.com");
-
-            ClientProfile clientProfile = new ClientProfile();
-            clientProfile.setHttpProfile(httpProfile);
-
-            SmsClient client = new SmsClient(cred, "ap-guangzhou", clientProfile);
-
-            SendSmsRequest req = new SendSmsRequest();
-            req.setSmsSdkAppId(appId);
-            req.setSignName(signName);
-            req.setTemplateId(templateId);
-            req.setPhoneNumberSet(new String[]{"+86" + phone});
-            req.setTemplateParamSet(new String[]{code});
-
-            SendSmsResponse resp = client.SendSms(req);
-            if ("Ok".equals(resp.getSendStatusSet()[0].getCode())) {
-                log.info("腾讯云短信发送成功: phone={}", phone);
-                return true;
-            } else {
-                log.error("腾讯云短信发送失败: {}", resp.getSendStatusSet()[0].getMessage());
-                return false;
-            }
-            */
-
-            log.info("============================================");
-            log.info("【短信验证码 - 腾讯云(待实现)】");
-            log.info("手机号: {}", phone);
-            log.info("验证码: {}", code);
-            log.info("AppId: {}", appId);
-            log.info("签名: {}", signName);
-            log.info("模板: {}", templateId);
-            log.info("有效期: 5分钟");
-            log.info("============================================");
-            return true;
-
+            log.error("腾讯云短信发送未实现，拒绝假成功: phone={}, appId={}, signName={}, templateId={}, code={}",
+                    maskedPhone, appId, signName, templateId, SmsLogSanitizer.maskCode(code));
+            return false;
         } catch (Exception e) {
-            log.error("腾讯云短信发送异常", e);
+            log.error("腾讯云短信发送异常: phone={}", maskedPhone, e);
             return false;
         }
     }

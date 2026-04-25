@@ -114,10 +114,10 @@
           <n-input-number v-model:value="periodForm.year" :min="2020" :max="2030" style="width: 100%" />
         </n-form-item>
         <n-form-item label="开始日期" required>
-          <n-date-picker v-model:value="periodForm.startDate" value-format="yyyy-MM-dd" style="width: 100%" />
+          <n-date-picker v-model:formatted-value="periodForm.startDate" value-format="yyyy-MM-dd" style="width: 100%" />
         </n-form-item>
         <n-form-item label="结束日期" required>
-          <n-date-picker v-model:value="periodForm.endDate" value-format="yyyy-MM-dd" style="width: 100%" />
+          <n-date-picker v-model:formatted-value="periodForm.endDate" value-format="yyyy-MM-dd" style="width: 100%" />
         </n-form-item>
         <n-form-item label="目标分数" required>
           <n-input-number v-model:value="periodForm.targetScore" :min="0" :max="100" style="width: 100%" />

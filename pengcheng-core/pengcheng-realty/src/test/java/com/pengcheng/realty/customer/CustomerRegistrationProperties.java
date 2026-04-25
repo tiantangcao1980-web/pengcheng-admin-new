@@ -29,6 +29,9 @@ class CustomerRegistrationProperties {
 
     // ========== Constants ==========
     private static final int DEFAULT_PROTECTION_DAYS = 3;
+    private static final java.time.format.DateTimeFormatter REPORT_NO_FORMATTER =
+            java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final AtomicLong REPORT_NO_SEQUENCE = new AtomicLong();
 
     // ========== Simulated data store ==========
 
@@ -99,9 +102,8 @@ class CustomerRegistrationProperties {
     }
 
     private String generateReportNo() {
-        String ts = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int random = ThreadLocalRandom.current().nextInt(1000, 10000);
-        return "BP" + ts + random;
+        String ts = LocalDateTime.now().format(REPORT_NO_FORMATTER);
+        return "BP" + ts + String.format("%06d", REPORT_NO_SEQUENCE.incrementAndGet());
     }
 
     /**

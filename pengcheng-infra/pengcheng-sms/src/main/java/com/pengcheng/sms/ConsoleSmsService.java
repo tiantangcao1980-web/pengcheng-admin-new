@@ -15,7 +15,7 @@ public class ConsoleSmsService implements SmsService {
     public boolean sendCode(String phone, String code) {
         log.info("============================================");
         log.info("【短信验证码 - 控制台模式】");
-        log.info("手机号: {}", phone);
+        log.info("手机号: {}", SmsLogSanitizer.maskPhone(phone));
         log.info("验证码: {}", code);
         log.info("有效期: 5分钟");
         log.info("============================================");

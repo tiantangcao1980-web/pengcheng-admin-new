@@ -580,6 +580,9 @@
                     <n-form-item label="商户私钥">
                       <n-input v-model:value="configs.payment.wechatPay.privateKey" type="textarea" :rows="3" placeholder="请输入商户私钥" />
                     </n-form-item>
+                    <n-form-item label="平台证书">
+                      <n-input v-model:value="configs.payment.wechatPay.platformCert" type="textarea" :rows="3" placeholder="请输入微信支付平台证书" />
+                    </n-form-item>
                     <n-form-item label="证书序列号">
                       <n-input v-model:value="configs.payment.wechatPay.certSerialNo" placeholder="请输入证书序列号" />
                     </n-form-item>
@@ -840,7 +843,7 @@ const configs = reactive<Record<string, any>>({
     menuConfig: ''
   },
   payment: {
-    wechatPay: { enabled: false, mchId: '', appId: '', apiV3Key: '', privateKey: '', certSerialNo: '', notifyUrl: '' },
+    wechatPay: { enabled: false, mchId: '', appId: '', apiV3Key: '', privateKey: '', platformCert: '', certSerialNo: '', notifyUrl: '' },
     alipay: { enabled: false, appId: '', privateKey: '', publicKey: '', signType: 'RSA2', gatewayUrl: 'https://openapi.alipay.com/gateway.do', notifyUrl: '', returnUrl: '' }
   },
   security: {

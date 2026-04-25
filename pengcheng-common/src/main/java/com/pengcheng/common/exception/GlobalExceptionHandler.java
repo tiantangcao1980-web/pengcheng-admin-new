@@ -5,11 +5,15 @@ import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
 import com.pengcheng.common.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理
@@ -33,7 +37,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public Result<Void> handleIllegalStateException(IllegalStateException e) {
         log.warn("非法状态异常: {}", e.getMessage());
-        return Result.fail(400, e.getMessage());
+        return Result.fail(BizErrorCode.BAD_REQUEST.getCode(), e.getMessage());
     }
 
     /**
@@ -42,7 +46,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotLoginException.class)
     public Result<Void> handleNotLoginException(NotLoginException e) {
         log.error("未登录异常: {}", e.getMessage());
-        return Result.fail(401, "请先登录");
+        return Result.fail(BizErrorCode.UNAUTHORIZED.getCode(), BizErrorCode.UNAUTHORIZED.getDefaultMessage());
     }
 
     /**
@@ -51,7 +55,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotPermissionException.class)
     public Result<Void> handleNotPermissionException(NotPermissionException e) {
         log.error("无权限异常: {}", e.getMessage());
-        return Result.fail(403, "没有权限访问");
+        return Result.fail(BizErrorCode.FORBIDDEN.getCode(), BizErrorCode.FORBIDDEN.getDefaultMessage());
     }
 
     /**
@@ -60,7 +64,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotRoleException.class)
     public Result<Void> handleNotRoleException(NotRoleException e) {
         log.error("无角色异常: {}", e.getMessage());
-        return Result.fail(403, "没有角色权限");
+        return Result.fail(BizErrorCode.FORBIDDEN.getCode(), "没有角色权限");
     }
 
     /**
@@ -71,7 +75,7 @@ public class GlobalExceptionHandler {
         FieldError fieldError = e.getBindingResult().getFieldError();
         String message = fieldError != null ? fieldError.getDefaultMessage() : "参数校验失败";
         log.error("参数校验异常: {}", message);
-        return Result.fail(400, message);
+        return Result.fail(BizErrorCode.BAD_REQUEST.getCode(), message);
     }
 
     /**
@@ -82,7 +86,23 @@ public class GlobalExceptionHandler {
         FieldError fieldError = e.getBindingResult().getFieldError();
         String message = fieldError != null ? fieldError.getDefaultMessage() : "参数绑定失败";
         log.error("参数绑定异常: {}", message);
-        return Result.fail(400, message);
+        return Result.fail(BizErrorCode.BAD_REQUEST.getCode(), message);
+    }
+
+    /**
+     * 约束校验异常
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Result<Void> handleConstraintViolationException(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .filter(msg -> msg != null && !msg.isBlank())
+                .collect(Collectors.joining("; "));
+        if (message.isBlank()) {
+            message = "参数校验失败";
+        }
+        log.error("约束校验异常: {}", message);
+        return Result.fail(BizErrorCode.BAD_REQUEST.getCode(), message);
     }
 
     /**
@@ -91,7 +111,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public Result<Void> handleRuntimeException(RuntimeException e) {
         log.warn("运行时异常: {}", e.getMessage());
-        return Result.fail(e.getMessage());
+        return Result.fail(BizErrorCode.BUSINESS_ERROR.getCode(), e.getMessage());
     }
 
     /**
@@ -100,7 +120,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public Result<Void> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("非法参数异常: {}", e.getMessage());
-        return Result.fail(400, e.getMessage());
+        return Result.fail(BizErrorCode.BAD_REQUEST.getCode(), e.getMessage());
     }
 
     /**
@@ -109,6 +129,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常", e);
-        return Result.fail("系统繁忙，请稍后再试");
+        return Result.fail(BizErrorCode.INTERNAL_ERROR.getCode(), BizErrorCode.INTERNAL_ERROR.getDefaultMessage());
     }
 }

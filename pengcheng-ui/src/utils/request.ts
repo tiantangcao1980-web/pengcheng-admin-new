@@ -140,7 +140,7 @@ service.interceptors.response.use(
     // blob 响应（预览/下载）：成功时返回 Blob，失败时解析错误信息并 reject
     if (response.config.responseType === 'blob') {
       if (response.status >= 200 && response.status < 300) return response.data
-      const blob = response.data as Blob
+      const blob = response.data as unknown as Blob
       return new Promise((_, reject) => {
         const reader = new FileReader()
         reader.onload = () => {
@@ -213,7 +213,7 @@ export function request<T = any>(config: RequestConfig): Promise<T> {
  * 带认证拉取文件流并生成 Blob URL（用于预览，用完后需 URL.revokeObjectURL）
  */
 export async function fetchBlobUrl(path: string): Promise<string> {
-  const blob = await service.get<Blob>(path, { responseType: 'blob' })
+  const blob = await service.get<Blob>(path, { responseType: 'blob' }) as unknown as Blob
   return URL.createObjectURL(blob)
 }
 
@@ -221,7 +221,7 @@ export async function fetchBlobUrl(path: string): Promise<string> {
  * 带认证下载文件（触发浏览器下载）
  */
 export async function downloadBlob(path: string, filename: string): Promise<void> {
-  const blob = await service.get<Blob>(path, { responseType: 'blob' })
+  const blob = await service.get<Blob>(path, { responseType: 'blob' }) as unknown as Blob
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

@@ -38,18 +38,18 @@ public class WechatPayVerifyService {
     public boolean verifySignature(String body, String signature, String nonce, 
                                    String timestamp, String serialNo) {
         try {
-            // 1. 获取商户证书
-            X509Certificate certificate = getMerchantCertificate(serialNo);
-            if (certificate == null) {
-                log.error("未找到商户证书，serialNo={}", serialNo);
+            if (isBlank(body) || isBlank(signature) || isBlank(nonce) || isBlank(timestamp) || isBlank(serialNo)) {
+                log.error("微信支付回调请求头或请求体缺失");
                 return false;
             }
 
-            // 2. 构建验签字符串
-            String signStr = buildVerifyString(body, nonce, timestamp);
-            log.debug("验签字符串：{}", signStr);
+            X509Certificate certificate = getPlatformCertificate(serialNo);
+            if (certificate == null) {
+                log.error("未找到微信支付平台证书，serialNo={}", serialNo);
+                return false;
+            }
 
-            // 3. 使用公钥验签
+            String signStr = buildVerifyString(body, nonce, timestamp);
             Signature sign = Signature.getInstance("SHA256withRSA");
             sign.initVerify(certificate.getPublicKey());
             sign.update(signStr.getBytes(StandardCharsets.UTF_8));
@@ -79,21 +79,13 @@ public class WechatPayVerifyService {
     }
 
     /**
-     * 获取商户证书
-     * 生产环境应从平台证书管理器获取
+     * 获取微信支付平台证书
      */
-    private X509Certificate getMerchantCertificate(String serialNo) {
+    private X509Certificate getPlatformCertificate(String serialNo) {
         try {
-            // TODO: 生产环境应从微信支付平台证书接口获取
-            // 这里使用本地配置的证书（仅用于测试）
-            String certContent = configHelper.getString("wechatPay", "platformCert");
-            if (certContent == null || certContent.isEmpty()) {
-                log.warn("未配置平台证书，使用商户证书代替（仅测试用）");
-                // 测试环境可以用商户公钥证书代替
-                certContent = configHelper.getString("wechatPay", "publicCert");
-            }
-
-            if (certContent == null || certContent.isEmpty()) {
+            String certContent = PaymentConfigSupport.getProviderString(configHelper, "wechatPay", "platformCert", null);
+            if (isBlank(certContent)) {
+                log.error("未配置微信支付平台证书，serialNo={}", serialNo);
                 return null;
             }
 
@@ -139,10 +131,17 @@ public class WechatPayVerifyService {
      */
     public WechatPayNotifyResource parseNotifyBody(String body) {
         try {
+            if (isBlank(body)) {
+                log.error("微信支付回调 body 为空");
+                return null;
+            }
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             WechatPayNotifyRequest request = mapper.readValue(body, WechatPayNotifyRequest.class);
+            if (request.getResource() == null) {
+                log.error("微信支付回调 resource 为空");
+                return null;
+            }
             
-            // 解密资源内容（简化处理，实际应使用 AES-256-GCM 解密）
             String decryptedContent = decryptResource(
                     request.getResource().getAssociatedData(),
                     request.getResource().getNonce(),
@@ -170,14 +169,16 @@ public class WechatPayVerifyService {
      * 解密回调数据（AES-256-GCM）
      */
     private String decryptResource(String associatedData, String nonce, String ciphertext) throws Exception {
-        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
-        String apiKey = configHelper.getString("wechatPay", "apiV3Key");
-        if (apiKey == null || apiKey.isEmpty()) {
-            log.warn("未配置 API v3 密钥，返回密文原文");
-            return ciphertext;
+        if (isBlank(nonce) || isBlank(ciphertext)) {
+            throw new IllegalArgumentException("微信支付回调解密参数缺失");
         }
-        if (nonce == null || nonce.isEmpty() || ciphertext == null || ciphertext.isEmpty()) {
-            return ciphertext;
+        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+        String apiKey = PaymentConfigSupport.getProviderString(configHelper, "wechatPay", "apiV3Key", null);
+        if (isBlank(apiKey)) {
+            throw new IllegalStateException("未配置微信支付 APIv3 密钥");
+        }
+        if (apiKey.length() != 32) {
+            throw new IllegalStateException("微信支付 APIv3 密钥长度非法");
         }
         byte[] keyBytes = apiKey.getBytes(StandardCharsets.UTF_8);
         
@@ -192,6 +193,10 @@ public class WechatPayVerifyService {
         }
         byte[] result = cipher.doFinal(Base64.getDecoder().decode(ciphertext));
         return new String(result, StandardCharsets.UTF_8);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**

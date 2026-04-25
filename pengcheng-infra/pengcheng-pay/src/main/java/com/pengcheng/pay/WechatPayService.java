@@ -36,23 +36,22 @@ public class WechatPayService extends AbstractPayService {
         result.put("orderNo", orderNo);
 
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            if (paymentConfig == null || paymentConfig.get("wechatPay") == null) {
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "wechatPay");
+            if (config == null) {
                 throw new RuntimeException("微信支付配置不存在");
             }
 
-            JsonNode config = paymentConfig.get("wechatPay");
-            boolean enabled = config.has("enabled") && config.get("enabled").asBoolean();
+            boolean enabled = PaymentConfigSupport.getBoolean(config, "enabled", false);
             if (!enabled) {
                 throw new RuntimeException("微信支付未启用");
             }
 
-            String mchId = getConfigValue(config, "mchId");
-            String appId = getConfigValue(config, "appId");
-            String apiV3Key = getConfigValue(config, "apiV3Key");
-            String privateKey = getConfigValue(config, "privateKey");
-            String certSerialNo = getConfigValue(config, "certSerialNo");
-            String notifyUrl = getConfigValue(config, "notifyUrl");
+            String mchId = PaymentConfigSupport.getString(config, "mchId");
+            String appId = PaymentConfigSupport.getString(config, "appId");
+            String apiV3Key = PaymentConfigSupport.getString(config, "apiV3Key");
+            String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+            String certSerialNo = PaymentConfigSupport.getString(config, "certSerialNo");
+            String notifyUrl = PaymentConfigSupport.getString(config, "notifyUrl");
 
             if (mchId.isEmpty() || appId.isEmpty() || apiV3Key.isEmpty() || privateKey.isEmpty()) {
                 throw new RuntimeException("微信支付配置不完整，请检查商户号、AppID、APIv3密钥、商户私钥");
@@ -108,23 +107,25 @@ public class WechatPayService extends AbstractPayService {
         Map<String, String> result = new HashMap<>();
 
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            if (paymentConfig == null || paymentConfig.get("wechatPay") == null) {
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "wechatPay");
+            if (config == null) {
                 throw new RuntimeException("微信支付配置不存在");
             }
 
-            JsonNode config = paymentConfig.get("wechatPay");
-            boolean enabled = config.has("enabled") && config.get("enabled").asBoolean();
+            boolean enabled = PaymentConfigSupport.getBoolean(config, "enabled", false);
             if (!enabled) {
                 throw new RuntimeException("微信支付未启用");
             }
 
-            String mchId = getConfigValue(config, "mchId");
-            String appId = configHelper.getMiniProgramAppId(); // 使用小程序的AppID
-            String apiV3Key = getConfigValue(config, "apiV3Key");
-            String privateKey = getConfigValue(config, "privateKey");
-            String certSerialNo = getConfigValue(config, "certSerialNo");
-            String notifyUrl = getConfigValue(config, "notifyUrl");
+            String mchId = PaymentConfigSupport.getString(config, "mchId");
+            String appId = configHelper.getMiniProgramAppId();
+            if (appId == null || appId.isBlank()) {
+                appId = PaymentConfigSupport.getString(config, "appId");
+            }
+            String apiV3Key = PaymentConfigSupport.getString(config, "apiV3Key");
+            String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+            String certSerialNo = PaymentConfigSupport.getString(config, "certSerialNo");
+            String notifyUrl = PaymentConfigSupport.getString(config, "notifyUrl");
 
             if (mchId.isEmpty() || appId.isEmpty() || apiV3Key.isEmpty() || privateKey.isEmpty()) {
                 throw new RuntimeException("微信支付配置不完整");
@@ -224,8 +225,10 @@ public class WechatPayService extends AbstractPayService {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            JsonNode config = paymentConfig.get("wechatPay");
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "wechatPay");
+            if (config == null) {
+                throw new RuntimeException("微信支付配置不存在");
+            }
             
             Config wechatConfig = buildWechatConfig(config);
             
@@ -236,7 +239,7 @@ public class WechatPayService extends AbstractPayService {
             
             com.wechat.pay.java.service.payments.nativepay.model.QueryOrderByOutTradeNoRequest request =
                 new com.wechat.pay.java.service.payments.nativepay.model.QueryOrderByOutTradeNoRequest();
-            request.setMchid(getConfigValue(config, "mchId"));
+            request.setMchid(PaymentConfigSupport.getString(config, "mchId"));
             request.setOutTradeNo(orderNo);
             
             com.wechat.pay.java.service.payments.model.Transaction transaction = 
@@ -262,8 +265,10 @@ public class WechatPayService extends AbstractPayService {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            JsonNode paymentConfig = configHelper.getConfig("payment");
-            JsonNode config = paymentConfig.get("wechatPay");
+            JsonNode config = PaymentConfigSupport.getProviderConfig(configHelper, "wechatPay");
+            if (config == null) {
+                throw new RuntimeException("微信支付配置不存在");
+            }
             
             Config wechatConfig = buildWechatConfig(config);
             
@@ -303,10 +308,10 @@ public class WechatPayService extends AbstractPayService {
      * 构建微信支付配置
      */
     private Config buildWechatConfig(JsonNode config) {
-        String mchId = getConfigValue(config, "mchId");
-        String apiV3Key = getConfigValue(config, "apiV3Key");
-        String privateKey = getConfigValue(config, "privateKey");
-        String certSerialNo = getConfigValue(config, "certSerialNo");
+        String mchId = PaymentConfigSupport.getString(config, "mchId");
+        String apiV3Key = PaymentConfigSupport.getString(config, "apiV3Key");
+        String privateKey = PaymentConfigSupport.getString(config, "privateKey");
+        String certSerialNo = PaymentConfigSupport.getString(config, "certSerialNo");
         
         return new RSAAutoCertificateConfig.Builder()
             .merchantId(mchId)
@@ -314,9 +319,5 @@ public class WechatPayService extends AbstractPayService {
             .merchantSerialNumber(certSerialNo)
             .apiV3Key(apiV3Key)
             .build();
-    }
-
-    private String getConfigValue(JsonNode config, String key) {
-        return config.has(key) && !config.get(key).isNull() ? config.get(key).asText() : "";
     }
 }
