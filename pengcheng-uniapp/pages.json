@@ -27,6 +27,18 @@
 			}
 		},
 		{
+			"path": "pages/login/register-tenant",
+			"style": {
+				"navigationBarTitleText": "企业一分钟开通"
+			}
+		},
+		{
+			"path": "pages/login/invite-accept",
+			"style": {
+				"navigationBarTitleText": "接受企业邀请"
+			}
+		},
+		{
 			"path": "pages/chat/index",
 			"style": {
 				"navigationBarTitleText": "聊天",
