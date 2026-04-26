@@ -1,0 +1,31 @@
+feat(copilot-d4): V4.0 MVP 闭环④ AI 智能助手全量交付
+
+后端（pengcheng-core/pengcheng-ai 4 个新子包）：
+- reminder/  ai_reminder_rule + ReminderRuleEngine + ReminderScheduler（@Scheduled，每分钟扫描，仅 ai 模块）
+  支持 DAILY（每日 9:00）、THRESHOLD（审批堆积 2h）、PRE_EXPIRE（公海回收前 1 天）三类规则
+  ChannelPushPortAdapter 委托现有 ChannelPushService（D5 兜底）
+- copilot/action/  ai_copilot_action_log + CopilotActionService 两阶段提交
+  propose 生成 confirmToken（10 分钟 TTL）-> confirm/cancel；CopilotActionExecutor SPI 由业务侧实现
+- asr/  AsrService + DashScopeAsrService（mock 桩，留 TODO 接入说明）
+- cost/  CostRouterService 6 路决策（SMALL/MEDIUM/LARGE）+ InMemoryAiQuotaStore 企业配额
+
+Flyway 迁移：
+- V43__ai_reminder_rule.sql（任务原 V20，避开已存在的 V20/V42）
+- V44__ai_copilot_action_log.sql（任务原 V21）
+
+前端 Web（pengcheng-ui）：
+- components/copilot/ FAB + Drawer + Bubble + StreamRenderer + Store
+- App.vue 仅加 1 行 CopilotFab 注册全局悬浮入口
+- api/aiCopilot.ts + aiReminder.ts；views/ai/copilot-config/ 提醒规则配置中心
+- vitest 配置 + 1 个 Drawer 流式渲染测试
+
+前端 uniapp：
+- components/copilot/ fab + bubble + copilotApi（pollChat 长轮询代替 SSE）
+- 新建 pages/ai/copilot.vue（含 mic 录音 + ASR + Tool Call 二次确认），不动既有 chat.vue
+- pages.json 仅追加路由
+
+红线遵守：不动 orchestration/ rag/ mcp/ AiChatController 与 pengcheng-job；只 import 引用 ChannelPushService。
+
+详见 docs/V4-MVP-D4-DELIVERY.md。
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
