@@ -191,6 +191,60 @@
 			"style": {
 				"navigationBarTitleText": "AI Copilot"
 			}
+		},
+		{
+			"path": "pages/oa/shift-detail",
+			"style": {
+				"navigationBarTitleText": "班次详情"
+			}
+		},
+		{
+			"path": "pages/oa/correction-apply",
+			"style": {
+				"navigationBarTitleText": "补卡申请"
+			}
+		},
+		{
+			"path": "pages/oa/approval-flow",
+			"style": {
+				"navigationBarTitleText": "审批流程"
+			}
+		},
+		{
+			"path": "pages/oa/daily-report",
+			"style": {
+				"navigationBarTitleText": "我的日报"
+			}
+		},
+		{
+			"path": "pages/lead/list",
+			"style": {
+				"navigationBarTitleText": "线索列表"
+			}
+		},
+		{
+			"path": "pages/lead/detail",
+			"style": {
+				"navigationBarTitleText": "线索详情"
+			}
+		},
+		{
+			"path": "pages/lead/assign",
+			"style": {
+				"navigationBarTitleText": "线索分配"
+			}
+		},
+		{
+			"path": "pages/lead/convert",
+			"style": {
+				"navigationBarTitleText": "转为客户"
+			}
+		},
+		{
+			"path": "pages/customer/follow-media",
+			"style": {
+				"navigationBarTitleText": "多媒体跟进"
+			}
 		}
 	],
 	"globalStyle": {

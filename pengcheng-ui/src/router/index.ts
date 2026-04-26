@@ -18,6 +18,13 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '注册', requiresAuth: false }
   },
   {
+    // V4 MVP 闭环① — 企业一分钟开通向导（公开页面，注册前可访问）
+    path: '/register/tenant',
+    name: 'RegisterTenant',
+    component: () => import('@/views/register/tenant.vue'),
+    meta: { title: '企业一分钟开通', requiresAuth: false }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layout/index.vue'),
