@@ -9,14 +9,16 @@
 
 ## 1. 五路分支与交付概览
 
-| Owner | 分支 | HEAD | 文件 | 新增行 | Flyway V 编号（待重排） |
-|-------|------|------|------|-------|------------------------|
-| D1 闭环① 账户与组织 | `worktree-agent-a494fd36421b26804` | `e765cf8` | 47 | +3608 | V43__tenant_invite, V44__user_login_device |
-| D2 闭环② OA | `worktree-agent-ad4f9c0d45c23af0a` | `9b785a9` | 60 | +5369 | V43__attendance_shift, V44__attendance_correction, V45__approval_flow |
-| D3 闭环③ CRM | `worktree-agent-a4013e90b5395e7cf` | `a4eaad4` | 74 | +4169 | V43__crm_lead, V44__crm_custom_field, V45__customer_visit_media, V46__customer_tag, V47__customer_realty_ext |
-| D4 闭环④ AI Copilot | `worktree-agent-a7f9e021a9eef0b64` | `a15a1dc` | 55 | +3747 | V43__ai_reminder_rule, V44__ai_copilot_action_log |
-| D5 闭环⑤ 移动办公 | `worktree-agent-a2ca3dc40b69b7da0` | `052edd7` | 43 | +4088 | sql/V22__push_channel_log, sql/V23__subscribe_msg_template **（路径错位）** |
-| **合计** | — | — | **279** | **+20,981** | — |
+| Owner | 分支 | HEAD（amend 后） | 文件 | 新增行 | Flyway V 编号（已重排） |
+|-------|------|------------------|------|-------|------------------------|
+| D1 闭环① 账户与组织 | `worktree-agent-a494fd36421b26804` | `e765cf8` | 47 | +3608 | V43__tenant_invite, V44__user_login_device ✅ |
+| D2 闭环② OA | `worktree-agent-ad4f9c0d45c23af0a` | `dd10c4d` | 60 | +5369 | V45__attendance_shift, V46__attendance_correction, V47__approval_flow ✅ |
+| D3 闭环③ CRM | `worktree-agent-a4013e90b5395e7cf` | `dc4c415` | 74 | +4169 | V48__crm_lead, V49__crm_custom_field, V50__customer_visit_media, V51__customer_tag, V52__customer_realty_ext ✅ |
+| D4 闭环④ AI Copilot | `worktree-agent-a7f9e021a9eef0b64` | `31fe85b` | 55 | +3747 | V53__ai_reminder_rule, V54__ai_copilot_action_log ✅ |
+| D5 闭环⑤ 移动办公 | `worktree-agent-a2ca3dc40b69b7da0` | `5ebc9bb` | 43 | +4088 | V55__push_channel_log, V56__subscribe_msg_template ✅（已迁至 db/migration/） |
+| **合计** | — | — | **279** | **+20,981** | V43-V56 连续无冲突 |
+
+> rev.2 状态：§2.1 V 编号重排 + §2.2 D5 路径迁移**已执行完毕**（amend commits）。后续接力关注 §2.3（D1 invite 融合）+ §2.4（pom 合并）+ §2.5（共享集成点）。
 
 ---
 
