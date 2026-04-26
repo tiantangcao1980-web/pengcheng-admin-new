@@ -173,6 +173,12 @@
 			"style": {
 				"navigationBarTitleText": "AI助手"
 			}
+		},
+		{
+			"path": "pages/ai/copilot",
+			"style": {
+				"navigationBarTitleText": "AI Copilot"
+			}
 		}
 	],
 	"globalStyle": {

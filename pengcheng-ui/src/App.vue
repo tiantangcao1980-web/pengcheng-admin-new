@@ -6,6 +6,8 @@
           <GlobalApiProvider />
           <router-view />
           <Watermark />
+          <!-- V4.0 MVP 闭环④ AI Copilot 全局悬浮入口 -->
+          <CopilotFab />
         </n-dialog-provider>
       </n-message-provider>
     </n-loading-bar-provider>
@@ -18,6 +20,7 @@ import { useMessage, useDialog, useLoadingBar } from 'naive-ui'
 import { defineComponent, computed, onMounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import Watermark from '@/components/Watermark/index.vue'
+import CopilotFab from '@/components/copilot/CopilotFab.vue'
 
 const themeStore = useThemeStore()
 
