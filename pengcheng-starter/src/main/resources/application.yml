@@ -33,6 +33,7 @@ server:
 
 pengcheng:
   feature:
+    tenant: false  # Phase 6 启用多租户行过滤；true 时激活 TenantInterceptor
     alipay:
       enabled: false
     wechat:

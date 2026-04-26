@@ -63,6 +63,26 @@ public class OrgInvite extends BaseEntity {
     private LocalDateTime acceptedAt;
 
     /**
+     * 租户 ID
+     */
+    private Long tenantId;
+
+    /**
+     * 邀请渠道：LINK / SMS / QRCODE / EXCEL
+     */
+    private String channel;
+
+    /**
+     * 二维码图片 URL（channel=QRCODE 时填充）
+     */
+    private String qrcodeUrl;
+
+    /**
+     * Excel 批次 ID（channel=EXCEL 时同批次共享）
+     */
+    private String excelBatchId;
+
+    /**
      * 角色 ID 列表（非数据库字段）
      */
     @TableField(exist = false)

@@ -1,5 +1,6 @@
 package com.pengcheng.system.invite.service.impl;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,7 +11,9 @@ import com.pengcheng.system.entity.SysUser;
 import com.pengcheng.system.entity.SysUserRole;
 import com.pengcheng.system.invite.entity.OrgInvite;
 import com.pengcheng.system.invite.mapper.OrgInviteMapper;
+import com.pengcheng.system.invite.sender.InviteChannelSender;
 import com.pengcheng.system.invite.service.OrgInviteService;
+import com.pengcheng.system.invite.support.InviteChannel;
 import com.pengcheng.system.invite.support.OrgInviteStatus;
 import com.pengcheng.system.mapper.SysUserRoleMapper;
 import com.pengcheng.system.service.SysDeptService;
@@ -43,6 +46,11 @@ public class OrgInviteServiceImpl extends ServiceImpl<OrgInviteMapper, OrgInvite
     private final SysUserService userService;
     private final SysUserRoleMapper userRoleMapper;
 
+    /**
+     * 渠道 Sender 注册表（由 Spring 自动注入所有 InviteChannelSender 实现）
+     */
+    private final List<InviteChannelSender> channelSenders;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OrgInvite createInvite(String email, String phone, List<Long> roleIds, Long deptId, LocalDateTime expiresAt) {
@@ -59,6 +67,7 @@ public class OrgInviteServiceImpl extends ServiceImpl<OrgInviteMapper, OrgInvite
         invite.setRoleIds(joinRoleIds(normalizedRoleIds));
         invite.setRoleIdList(normalizedRoleIds);
         invite.setDeptId(deptId);
+        invite.setChannel(InviteChannel.LINK);
         invite.setStatus(OrgInviteStatus.PENDING);
         invite.setExpiresAt(expiresAt != null ? expiresAt : currentTime().plusDays(DEFAULT_EXPIRE_DAYS));
         this.save(invite);
@@ -248,5 +257,99 @@ public class OrgInviteServiceImpl extends ServiceImpl<OrgInviteMapper, OrgInvite
 
     private String normalizeText(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    // ===================== channel-aware 方法实现 =====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrgInvite sendSms(String phone, List<Long> roleIds, Long deptId, LocalDateTime expiresAt, Long tenantId) {
+        if (!StringUtils.hasText(phone)) {
+            throw new BusinessException("短信邀请必须提供手机号");
+        }
+        OrgInvite invite = buildInvite(null, phone, roleIds, deptId, expiresAt, tenantId, InviteChannel.SMS);
+        this.save(invite);
+        dispatchSender(invite);
+        return hydrateInvite(invite);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrgInvite sendLink(String email, String phone, List<Long> roleIds, Long deptId, LocalDateTime expiresAt, Long tenantId) {
+        if (!StringUtils.hasText(email) && !StringUtils.hasText(phone)) {
+            throw new BusinessException("邮箱或手机号至少填写一项");
+        }
+        OrgInvite invite = buildInvite(email, phone, roleIds, deptId, expiresAt, tenantId, InviteChannel.LINK);
+        this.save(invite);
+        dispatchSender(invite);
+        return hydrateInvite(invite);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrgInvite sendQrcode(List<Long> roleIds, Long deptId, LocalDateTime expiresAt, Long tenantId) {
+        OrgInvite invite = buildInvite(null, null, roleIds, deptId, expiresAt, tenantId, InviteChannel.QRCODE);
+        // 二维码不强制要求 email/phone
+        this.save(invite);
+        dispatchSender(invite);
+        // sender 可能写回 qrcodeUrl，需更新
+        if (StringUtils.hasText(invite.getQrcodeUrl())) {
+            this.updateById(invite);
+        }
+        return hydrateInvite(invite);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<OrgInvite> batchImportFromExcel(List<ExcelInviteRow> rows, LocalDateTime expiresAt, Long tenantId) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        String batchId = IdUtil.fastSimpleUUID();
+        List<OrgInvite> result = new ArrayList<>();
+        for (ExcelInviteRow row : rows) {
+            OrgInvite invite = buildInvite(row.getEmail(), row.getPhone(), row.getRoleIds(), row.getDeptId(), expiresAt, tenantId, InviteChannel.EXCEL);
+            invite.setExcelBatchId(batchId);
+            this.save(invite);
+            dispatchSender(invite);
+            result.add(hydrateInvite(invite));
+        }
+        return result;
+    }
+
+    /**
+     * 构建基础邀请记录（不持久化）。
+     */
+    private OrgInvite buildInvite(String email, String phone, List<Long> roleIds, Long deptId,
+                                   LocalDateTime expiresAt, Long tenantId, String channel) {
+        validateDept(deptId);
+        List<Long> normalizedRoleIds = validateAndNormalizeRoleIds(roleIds);
+
+        OrgInvite invite = new OrgInvite();
+        invite.setInviteCode(generateUniqueInviteCode());
+        invite.setEmail(normalizeText(email));
+        invite.setPhone(normalizeText(phone));
+        invite.setRoleIds(joinRoleIds(normalizedRoleIds));
+        invite.setRoleIdList(normalizedRoleIds);
+        invite.setDeptId(deptId);
+        invite.setTenantId(tenantId);
+        invite.setChannel(channel);
+        invite.setStatus(OrgInviteStatus.PENDING);
+        invite.setExpiresAt(expiresAt != null ? expiresAt : currentTime().plusDays(DEFAULT_EXPIRE_DAYS));
+        return invite;
+    }
+
+    /**
+     * 根据 channel 分派对应的 InviteChannelSender（找不到则静默跳过）。
+     */
+    private void dispatchSender(OrgInvite invite) {
+        if (channelSenders == null || channelSenders.isEmpty()) {
+            return;
+        }
+        String ch = invite.getChannel();
+        channelSenders.stream()
+                .filter(s -> s.channel().equalsIgnoreCase(ch))
+                .findFirst()
+                .ifPresent(s -> s.send(invite));
     }
 }
