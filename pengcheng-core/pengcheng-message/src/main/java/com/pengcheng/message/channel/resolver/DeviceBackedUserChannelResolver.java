@@ -1,5 +1,7 @@
 package com.pengcheng.message.channel.resolver;
 
+import com.pengcheng.message.subscribe.auth.MpUserSubscribe;
+import com.pengcheng.message.subscribe.auth.MpUserSubscribeService;
 import com.pengcheng.system.device.entity.UserLoginDevice;
 import com.pengcheng.system.device.service.UserLoginDeviceService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +23,9 @@ import java.util.Optional;
  *   <li><b>appRegistrationId</b>：取所有设备中 lastActive 最新的 APP 设备的 tokenValue。
  *       <br>TODO: user_login_device 表暂无独立的 push device_token 字段（如极光/个推 registrationId），
  *       此处以 tokenValue 占位；待表增加 {@code device_push_token} 列后替换。</li>
- *   <li><b>miniProgramSubscribed</b>：始终 false（mp_user_subscribe 表尚未建立，留 TODO）。</li>
- *   <li><b>miniProgramOpenId</b>：始终 null（同上 TODO）。</li>
+ *   <li><b>miniProgramSubscribed</b>：查询 {@code mp_user_subscribe} 表，
+ *       存在 {@code revoked=0 AND used < quota} 的记录则为 true。</li>
+ *   <li><b>miniProgramOpenId</b>：取上述记录中 lastSubscribeTime 最新行的 openId。</li>
  *   <li><b>webInboxEnabled</b>：始终 true。</li>
  *   <li>用户无任何登录设备时返回最小画像（仅站内信）。</li>
  * </ul>
@@ -35,6 +38,7 @@ public class DeviceBackedUserChannelResolver implements UserChannelResolver {
     static final long APP_ONLINE_THRESHOLD_SECONDS = 60L;
 
     private final UserLoginDeviceService userLoginDeviceService;
+    private final MpUserSubscribeService mpUserSubscribeService;
 
     @Override
     public UserChannelProfile resolve(Long userId) {
@@ -63,15 +67,23 @@ public class DeviceBackedUserChannelResolver implements UserChannelResolver {
             appRegistrationId = appDevice.getTokenValue();
         }
 
-        // TODO: 查询 mp_user_subscribe 表获取 miniProgramSubscribed 和 miniProgramOpenId
-        //       mp_user_subscribe 表尚未建立，暂默认 false / null
+        // 查询 mp_user_subscribe 表：取配额未耗尽、未撤销、lastSubscribeTime 最新的一条
+        // 规则：多模板时取最新授权时间决定 openId；存在任意有效记录则 miniProgramSubscribed=true
+        boolean miniProgramSubscribed = false;
+        String miniProgramOpenId = null;
+
+        Optional<MpUserSubscribe> latestActive = mpUserSubscribeService.findLatestActive(userId);
+        if (latestActive.isPresent()) {
+            miniProgramSubscribed = true;
+            miniProgramOpenId = latestActive.get().getOpenId();
+        }
 
         return UserChannelProfile.builder()
                 .userId(userId)
                 .appOnline(appOnline)
                 .appRegistrationId(appRegistrationId)
-                .miniProgramSubscribed(false)
-                .miniProgramOpenId(null)
+                .miniProgramSubscribed(miniProgramSubscribed)
+                .miniProgramOpenId(miniProgramOpenId)
                 .webInboxEnabled(true)
                 .build();
     }

@@ -1,5 +1,7 @@
 package com.pengcheng.message.channel.resolver;
 
+import com.pengcheng.message.subscribe.auth.MpUserSubscribe;
+import com.pengcheng.message.subscribe.auth.MpUserSubscribeService;
 import com.pengcheng.system.device.entity.UserLoginDevice;
 import com.pengcheng.system.device.service.UserLoginDeviceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -23,11 +26,17 @@ class DeviceBackedUserChannelResolverTest {
     @Mock
     private UserLoginDeviceService userLoginDeviceService;
 
+    @Mock
+    private MpUserSubscribeService mpUserSubscribeService;
+
     private DeviceBackedUserChannelResolver resolver;
 
     @BeforeEach
     void setUp() {
-        resolver = new DeviceBackedUserChannelResolver(userLoginDeviceService);
+        // 默认：用户无有效订阅（未授权状态）
+        when(mpUserSubscribeService.findLatestActive(org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(Optional.empty());
+        resolver = new DeviceBackedUserChannelResolver(userLoginDeviceService, mpUserSubscribeService);
     }
 
     // -----------------------------------------------------------------------
@@ -135,5 +144,42 @@ class DeviceBackedUserChannelResolverTest {
         assertThat(profile.isAppOnline()).isFalse();
         assertThat(profile.getAppRegistrationId()).isNull();
         assertThat(profile.isWebInboxEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("⑥ 用户有有效订阅记录 → miniProgramSubscribed=true，miniProgramOpenId 来自记录")
+    void resolve_miniProgramSubscribed_when_active_subscription_exists() {
+        UserLoginDevice device = appDevice(6L, LocalDateTime.now().minusSeconds(10), "reg-token-6");
+        when(userLoginDeviceService.listByUser(6L)).thenReturn(List.of(device));
+
+        MpUserSubscribe sub = MpUserSubscribe.builder()
+                .userId(6L)
+                .openId("wx-open-id-6")
+                .templateId("tpl-001")
+                .quota(2)
+                .used(0)
+                .revoked(0)
+                .lastSubscribeTime(LocalDateTime.now())
+                .build();
+        when(mpUserSubscribeService.findLatestActive(6L)).thenReturn(Optional.of(sub));
+
+        UserChannelProfile profile = resolver.resolve(6L);
+
+        assertThat(profile.isMiniProgramSubscribed()).isTrue();
+        assertThat(profile.getMiniProgramOpenId()).isEqualTo("wx-open-id-6");
+    }
+
+    @Test
+    @DisplayName("⑦ 用户订阅已撤销或配额耗尽（findLatestActive 返回 empty）→ miniProgramSubscribed=false")
+    void resolve_miniProgramNotSubscribed_when_no_active_subscription() {
+        UserLoginDevice device = appDevice(7L, LocalDateTime.now().minusSeconds(10), "reg-token-7");
+        when(userLoginDeviceService.listByUser(7L)).thenReturn(List.of(device));
+
+        // mpUserSubscribeService mock 默认已在 setUp 中返回 empty，此处无需重复 stub
+
+        UserChannelProfile profile = resolver.resolve(7L);
+
+        assertThat(profile.isMiniProgramSubscribed()).isFalse();
+        assertThat(profile.getMiniProgramOpenId()).isNull();
     }
 }
