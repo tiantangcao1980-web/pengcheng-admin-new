@@ -235,6 +235,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/project/detail.vue'),
         meta: { title: '项目详情', hideInMenu: true }
       },
+      // ========== J4 新增：甘特图 & 看板（独立全屏页）==========
+      {
+        path: 'project/gantt',
+        name: 'ProjectGantt',
+        component: () => import('@/views/project/gantt/index.vue'),
+        meta: { title: '项目甘特图', hideInMenu: true }
+      },
+      {
+        path: 'project/kanban',
+        name: 'ProjectKanban',
+        component: () => import('@/views/project/kanban/index.vue'),
+        meta: { title: '项目看板', hideInMenu: true }
+      },
+      // =========================================================
 
       // ========== 4. 人事管理 ==========
       {
