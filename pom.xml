@@ -243,6 +243,11 @@
                 <artifactId>pengcheng-crm</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.pengcheng</groupId>
+                <artifactId>pengcheng-oa</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- 定时任务 -->
             <dependency>
