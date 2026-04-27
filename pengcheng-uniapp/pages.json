@@ -251,6 +251,25 @@
 			"style": {
 				"navigationBarTitleText": "名片扫描"
 			}
+		},
+		{
+			"path": "pages/realty/project-list",
+			"style": {
+				"navigationBarTitleText": "楼盘列表"
+			}
+		},
+		{
+			"path": "pages/realty/project-detail",
+			"style": {
+				"navigationBarTitleText": "楼盘详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/realty/unit-detail",
+			"style": {
+				"navigationBarTitleText": "房源详情"
+			}
 		}
 	],
 	"globalStyle": {
