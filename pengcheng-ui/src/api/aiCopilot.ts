@@ -148,6 +148,18 @@ export const aiCopilotApi = {
     })
   },
 
+  /**
+   * H2：用户二次确认后执行动作（token-only 简化接口）。
+   * POST /admin/ai/copilot/action/execute
+   */
+  executeAction({ token }: { token: string }): Promise<string> {
+    return request<string>({
+      url: '/admin/ai/copilot/action/execute',
+      method: 'post',
+      data: { token }
+    })
+  },
+
   transcribe(audioUrl: string, format = 'mp3'): Promise<{ transcript: string; provider: string }> {
     return request({
       url: '/admin/ai/asr/transcribe',

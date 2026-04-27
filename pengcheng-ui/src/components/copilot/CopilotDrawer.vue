@@ -13,19 +13,27 @@
           <button class="copilot-icon-btn" @click="closeCopilot">×</button>
         </div>
 
-        <div class="copilot-drawer-body" ref="bodyRef">
-          <div v-if="copilotState.messages.length === 0" class="copilot-empty">
+        <div class=”copilot-drawer-body” ref=”bodyRef”>
+          <div v-if=”copilotState.messages.length === 0” class=”copilot-empty”>
             您可以这样问我：<br />
             “这个月我跟了几个客户？”<br />
             “帮我写条给王总的回访话术。”<br />
             “今天我要做什么？”
           </div>
           <MessageBubble
-            v-for="msg in copilotState.messages"
-            :key="msg.id"
-            :msg="msg"
-            @confirm="onConfirmAction"
-            @cancel="onCancelAction"
+            v-for=”msg in copilotState.messages”
+            :key=”msg.id”
+            :msg=”msg”
+            @confirm=”onConfirmAction”
+            @cancel=”onCancelAction”
+          />
+
+          <!-- H2：AI 提议动作时弹出二次确认对话框 -->
+          <ToolConfirmDialog
+            v-if=”copilotState.pendingProposal != null”
+            :proposal=”copilotState.pendingProposal”
+            @done=”onProposalDone”
+            @cancel=”onProposalCancel”
           />
         </div>
 
@@ -61,6 +69,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MessageBubble from './MessageBubble.vue'
+import ToolConfirmDialog from './ToolConfirmDialog.vue'
 import {
   closeCopilot,
   copilotState,
@@ -124,6 +133,24 @@ async function onSend() {
 }
 
 function onStreamChunk(target: CopilotMessage, chunk: string) {
+  // H2：检测 SSE tool_proposal 事件行（格式：event:tool_proposal\ndata:{json}）
+  // fetch+ReadableStream 模式下 event type 由调用方在外层解析后传入；
+  // 这里同时兼容直接在 data 帧中携带 __type=tool_proposal 的 JSON 包装格式。
+  if (chunk.startsWith('{') && chunk.includes('"__type":"tool_proposal"')) {
+    try {
+      const ev = JSON.parse(chunk)
+      if (ev.__type === 'tool_proposal') {
+        copilotState.pendingProposal = {
+          action: ev.action,
+          summary: ev.summary,
+          payload: ev.payload ?? {},
+          confirmToken: ev.confirmToken,
+          actionId: ev.actionId
+        }
+        return // 不追加到消息内容
+      }
+    } catch (_) { /* 解析失败则当普通文本处理 */ }
+  }
   target.content += chunk
 }
 
@@ -187,6 +214,17 @@ async function onCancelAction(msg: CopilotMessage) {
   if (!msg.pendingAction) return
   await aiCopilotApi.cancelAction(msg.pendingAction.actionId, msg.pendingAction.confirmToken).catch(() => null)
   msg.pendingAction = undefined
+}
+
+/** H2：ToolConfirmDialog 确认完成（成功或失败均走此路径） */
+function onProposalDone(result: string) {
+  pushMessage({ role: 'assistant', content: `✅ ${result}` })
+  copilotState.pendingProposal = null
+}
+
+/** H2：用户取消 ToolConfirmDialog */
+function onProposalCancel() {
+  copilotState.pendingProposal = null
 }
 
 onBeforeUnmount(() => {

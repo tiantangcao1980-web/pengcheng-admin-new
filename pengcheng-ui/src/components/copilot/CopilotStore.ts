@@ -3,8 +3,12 @@
  *
  * 设计：单例 reactive 对象，随 App 生命周期存在；如需持久化或跨标签同步，
  * 后续可平滑迁移到 pinia 模块（不在 D4 范围内）。
+ *
+ * H2 扩展：新增 pendingProposal，stream 解析到 tool_proposal 事件时填充，
+ * CopilotDrawer 据此挂载 ToolConfirmDialog。
  */
 import { reactive } from 'vue'
+import type { ToolProposal } from './ToolConfirmDialog.vue'
 
 export interface CopilotMessage {
   id: string
@@ -39,6 +43,12 @@ export interface CopilotState {
   loading: boolean
   /** 当前选中的高质量模式 */
   preferHighQuality: boolean
+  /**
+   * H2：等待用户二次确认的动作提议。
+   * stream 解析到 tool_proposal 事件时赋值；
+   * 用户确认或取消后置回 null。
+   */
+  pendingProposal: ToolProposal | null
 }
 
 export const copilotState = reactive<CopilotState>({
@@ -46,7 +56,8 @@ export const copilotState = reactive<CopilotState>({
   conversationId: null,
   messages: [],
   loading: false,
-  preferHighQuality: false
+  preferHighQuality: false,
+  pendingProposal: null
 })
 
 let counter = 0

@@ -30,6 +30,15 @@
         </button>
       </view>
     </view>
+
+    <!-- H2：AI 提议动作时弹出二次确认弹窗 -->
+    <tool-confirm-popup
+      v-if="pendingProposal"
+      :proposal="pendingProposal"
+      :show="!!pendingProposal"
+      @done="onProposalDone"
+      @cancel="onProposalCancel"
+    />
   </view>
 </template>
 
@@ -45,13 +54,14 @@
  *     结束后上传得到 audioUrl → /admin/ai/asr/transcribe → 文字回填到 input
  */
 import CopilotBubble from '../../components/copilot/copilot-bubble.vue'
+import ToolConfirmPopup from '../../components/copilot/tool-confirm-popup.vue'
 import { aiCopilotApi } from '../../components/copilot/copilotApi.js'
 
 let _idSeq = 0
 const newId = () => `${Date.now()}-${++_idSeq}`
 
 export default {
-  components: { CopilotBubble },
+  components: { CopilotBubble, ToolConfirmPopup },
   data() {
     return {
       input: '',
@@ -59,7 +69,9 @@ export default {
       loading: false,
       conversationId: null,
       recording: false,
-      recorderManager: null
+      recorderManager: null,
+      /** H2：AI 提议的待确认动作，非 null 时弹出 tool-confirm-popup */
+      pendingProposal: null
     }
   },
   computed: {
@@ -102,7 +114,12 @@ export default {
           assistant.streaming = false
           this.loading = false
           if (final?.conversationId) this.conversationId = final.conversationId
-          if (final?.suggestion) this.proposeAction(assistant, final.suggestion)
+          // H2：后端 poll 响应中携带 tool_proposal 时直接填充 pendingProposal
+          if (final?.toolProposal) {
+            this.pendingProposal = final.toolProposal
+          } else if (final?.suggestion) {
+            this.proposeAction(assistant, final.suggestion)
+          }
         },
         (err) => {
           assistant.streaming = false
@@ -152,6 +169,22 @@ export default {
         await aiCopilotApi.cancelAction(msg.pendingAction.actionId, msg.pendingAction.confirmToken)
       } catch (_) { /* ignore */ }
       msg.pendingAction = null
+    },
+
+    /** H2：tool-confirm-popup 确认完成（成功或失败均回调） */
+    onProposalDone(result) {
+      this.messages.push({
+        id: `${Date.now()}-${++_idSeq}`,
+        role: 'assistant',
+        content: `✅ ${result}`
+      })
+      this.pendingProposal = null
+      this.$forceUpdate?.()
+    },
+
+    /** H2：用户取消 tool-confirm-popup */
+    onProposalCancel() {
+      this.pendingProposal = null
     },
 
     onMicTap() {
