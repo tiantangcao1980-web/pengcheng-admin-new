@@ -36,6 +36,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页', icon: 'HomeOutline' }
       },
+      {
+        // I3 看板拖拽编辑器（受保护，requiresAuth 默认 true）
+        path: 'dashboard/designer',
+        name: 'DashboardDesigner',
+        component: () => import('@/views/dashboard/designer/index.vue'),
+        meta: { title: '看板编辑器', icon: 'GridOutline' }
+      },
 
       // ========== 1. 房产业务 ==========
       {
