@@ -37,6 +37,18 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- e签宝 HTTP 客户端实现：HMAC-SHA256 签名 + HTTP 工具 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+
+        <!-- e签宝回调 DTO Jackson 注解（@JsonProperty） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- ==================== 测试依赖 ==================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
