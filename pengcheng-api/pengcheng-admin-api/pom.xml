@@ -89,6 +89,11 @@
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-finance</artifactId>
         </dependency>
+        <!-- V4 MVP Phase 3 BI 自助分析 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-bi</artifactId>
+        </dependency>
 
         <!-- WebSocket基础设施 -->
         <dependency>
