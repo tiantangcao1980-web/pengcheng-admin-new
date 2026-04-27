@@ -84,6 +84,11 @@
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-crm</artifactId>
         </dependency>
+        <!-- V4 MVP Phase 2 财务闭环 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-finance</artifactId>
+        </dependency>
 
         <!-- WebSocket基础设施 -->
         <dependency>

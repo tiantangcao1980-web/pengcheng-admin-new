@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.pengcheng</groupId>
+        <artifactId>pengcheng-core</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>pengcheng-finance</artifactId>
+    <packaging>jar</packaging>
+    <name>MasterLife Finance</name>
+    <description>财务闭环模块 - 合同管理 / 发票开具 / 通用销售提成规则（V4.0 闭环 Phase 2）</description>
+
+    <properties>
+        <jacoco.skip>false</jacoco.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-system</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-db</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ==================== 测试依赖 ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

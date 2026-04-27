@@ -25,5 +25,6 @@
         <module>pengcheng-ai</module>
         <module>pengcheng-oa</module>
         <module>pengcheng-crm</module>
+        <module>pengcheng-finance</module>
     </modules>
 </project>
