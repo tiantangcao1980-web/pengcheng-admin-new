@@ -89,6 +89,16 @@
 					</view>
 				</view>
 			</view>
+
+			<!-- 自定义字段 -->
+			<view class="card">
+				<view class="card-title">自定义字段</view>
+				<custom-fields-panel
+					v-if="customerId"
+					:entity-type="'customer'"
+					:entity-id="customerId"
+				/>
+			</view>
 		</scroll-view>
 
 		<!-- 到访表单弹窗 -->
@@ -159,8 +169,10 @@
 
 <script>
 	import { getCustomerDetail, addCustomerVisit, addCustomerDeal } from '../../utils/api.js'
+	import CustomFieldsPanel from '../../components/custom-field/custom-fields-panel.vue'
 
 	export default {
+		components: { CustomFieldsPanel },
 		data() {
 			return {
 				customerId: '',

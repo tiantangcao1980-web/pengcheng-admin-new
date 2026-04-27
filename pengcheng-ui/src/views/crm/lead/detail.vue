@@ -24,7 +24,11 @@
     </table>
 
     <h3>自定义字段</h3>
-    <pre>{{ customValues }}</pre>
+    <CustomFieldsPanel
+      v-if="lead"
+      entity-type="lead"
+      :entity-id="leadId"
+    />
   </div>
 </template>
 
@@ -32,22 +36,21 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { leadApi, type CrmLead } from '@/api/leadApi'
-import { customFieldApi } from '@/api/customField'
+import CustomFieldsPanel from '@/views/crm/components/CustomFieldsPanel.vue'
 
 const route = useRoute()
 const lead = ref<CrmLead | null>(null)
 const history = ref<any[]>([])
-const customValues = ref<Record<string, any>>({})
+const leadId = ref<number>(0)
 
 onMounted(async () => {
   const id = Number(route.params.id ?? route.query.id ?? 0)
   if (!id) return
+  leadId.value = id
   const res: any = await leadApi.get(id)
   lead.value = res?.data ?? res
   const h: any = await leadApi.assignments(id)
   history.value = h?.data ?? h ?? []
-  const v: any = await customFieldApi.loadValues('lead', id)
-  customValues.value = v?.data ?? v ?? {}
 })
 </script>
 

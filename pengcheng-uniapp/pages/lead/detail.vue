@@ -23,15 +23,26 @@
 				<text>{{ h.ruleType }}</text>
 			</view>
 		</view>
+
+		<!-- 自定义字段 -->
+		<view class="card" v-if="id">
+			<text class="title">自定义字段</text>
+			<custom-fields-panel
+				entity-type="lead"
+				:entity-id="id"
+			/>
+		</view>
 	</view>
 </template>
 
 <script>
 import { get } from '@/utils/request.js'
+import CustomFieldsPanel from '../../components/custom-field/custom-fields-panel.vue'
 
 export default {
+	components: { CustomFieldsPanel },
 	data() {
-		return { lead: null, history: [] }
+		return { lead: null, history: [], id: 0 }
 	},
 	onLoad(options) {
 		this.id = Number(options.id || 0)
