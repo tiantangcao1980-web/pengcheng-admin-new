@@ -258,6 +258,11 @@
                 <artifactId>pengcheng-bi</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.pengcheng</groupId>
+                <artifactId>pengcheng-integration</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- 定时任务 -->
             <dependency>

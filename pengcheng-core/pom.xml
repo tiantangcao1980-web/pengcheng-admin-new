@@ -27,5 +27,6 @@
         <module>pengcheng-crm</module>
         <module>pengcheng-finance</module>
         <module>pengcheng-bi</module>
+        <module>pengcheng-integration</module>
     </modules>
 </project>
