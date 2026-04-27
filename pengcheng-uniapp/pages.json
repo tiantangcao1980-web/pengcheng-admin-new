@@ -245,6 +245,12 @@
 			"style": {
 				"navigationBarTitleText": "多媒体跟进"
 			}
+		},
+		{
+			"path": "pages/customer/ocr-import",
+			"style": {
+				"navigationBarTitleText": "名片扫描"
+			}
 		}
 	],
 	"globalStyle": {
