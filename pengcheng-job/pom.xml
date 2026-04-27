@@ -26,6 +26,12 @@
             <artifactId>pengcheng-ai</artifactId>
         </dependency>
 
+        <!-- V4 MVP 闭环② F3：审批超时扫描任务依赖 ApprovalFlowEngine -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-oa</artifactId>
+        </dependency>
+
         <!-- MyBatis Plus -->
         <dependency>
             <groupId>com.baomidou</groupId>
