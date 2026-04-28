@@ -2,6 +2,8 @@ package com.pengcheng.system.openapi.interceptor;
 
 import com.pengcheng.system.openapi.entity.OpenapiKey;
 import com.pengcheng.system.openapi.limit.OpenapiRateLimiter;
+import com.pengcheng.system.openapi.scope.ScopeChecker;
+import com.pengcheng.system.openapi.service.OpenapiCallLogService;
 import com.pengcheng.system.openapi.service.OpenapiKeyService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,6 +17,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * OpenAPI 拦截器：验签 + 限流 + 防重放。
@@ -36,11 +39,15 @@ public class OpenapiAuthInterceptor implements HandlerInterceptor {
 
     private final OpenapiKeyService keyService;
     private final OpenapiRateLimiter rateLimiter;
+    private final ScopeChecker scopeChecker;
+    private final OpenapiCallLogService callLogService;
 
     @Autowired(required = false)
     private StringRedisTemplate redis;
 
     private static final long TIMESTAMP_TOLERANCE_SEC = 300;
+    private static final String ATTR_REQUEST_ID = "openapi.request_id";
+    private static final String ATTR_START_NS = "openapi.start_ns";
 
     @Override
     public boolean preHandle(HttpServletRequest req, HttpServletResponse resp, Object handler) throws Exception {
@@ -92,13 +99,42 @@ public class OpenapiAuthInterceptor implements HandlerInterceptor {
             return reject(resp, 429, "rate limit exceeded");
         }
 
+        // scope 校验（M3）
+        if (!scopeChecker.check(k, req.getMethod(), req.getRequestURI())) {
+            return reject(resp, 403, "insufficient scope");
+        }
+
         OpenapiContext.set(k);
+        // 记录 request_id + 起始时间（afterCompletion 异步落库要用）
+        req.setAttribute(ATTR_REQUEST_ID, UUID.randomUUID().toString().replace("-", ""));
+        req.setAttribute(ATTR_START_NS, System.nanoTime());
         return true;
     }
 
     @Override
     public void afterCompletion(HttpServletRequest req, HttpServletResponse resp, Object handler, Exception ex) {
-        OpenapiContext.clear();
+        try {
+            // M3：异步落库 OpenapiCallLog（不在主链路阻塞）
+            String reqId = (String) req.getAttribute(ATTR_REQUEST_ID);
+            Long startNs = (Long) req.getAttribute(ATTR_START_NS);
+            if (reqId != null) {
+                OpenapiKey k = OpenapiContext.get();
+                int durationMs = startNs != null
+                        ? (int) ((System.nanoTime() - startNs) / 1_000_000L) : 0;
+                callLogService.recordAsync(
+                        k != null ? k.getAccessKey() : null,
+                        k != null ? k.getTenantId() : null,
+                        req.getMethod(),
+                        req.getRequestURI(),
+                        resp.getStatus(),
+                        reqId,
+                        durationMs,
+                        req.getRemoteAddr(),
+                        ex != null ? ex.getMessage() : null);
+            }
+        } finally {
+            OpenapiContext.clear();
+        }
     }
 
     private boolean reject(HttpServletResponse resp, int status, String msg) throws Exception {
