@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * 个人工作台聚合服务
@@ -73,7 +74,7 @@ public class WorkbenchService {
                 .build();
     }
 
-    private <T> List<T> safeFetch(java.util.function.Supplier<List<T>> supplier, String name) {
+    private <T> List<T> safeFetch(Supplier<List<T>> supplier, String name) {
         try {
             List<T> result = supplier.get();
             return result == null ? Collections.emptyList() : result;

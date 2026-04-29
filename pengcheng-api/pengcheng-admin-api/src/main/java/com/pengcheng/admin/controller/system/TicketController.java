@@ -48,9 +48,7 @@ public class TicketController {
     @Log(title = "工单分配", businessType = BusinessType.UPDATE)
     public Result<Void> assign(@PathVariable("id") Long id,
                                @RequestBody TicketActionDTO dto) {
-        dto.setTicketId(id);
-        if (dto.getOperatorId() == null) dto.setOperatorId(StpUtil.getLoginIdAsLong());
-        ticketService.assign(dto);
+        ticketService.assign(bindContext(id, dto));
         return Result.ok();
     }
 
@@ -59,10 +57,7 @@ public class TicketController {
     @SaCheckPermission("sys:ticket:handle")
     @Log(title = "工单开始处理", businessType = BusinessType.UPDATE)
     public Result<Void> start(@PathVariable("id") Long id) {
-        TicketActionDTO dto = TicketActionDTO.builder()
-                .ticketId(id)
-                .operatorId(StpUtil.getLoginIdAsLong()).build();
-        ticketService.start(dto);
+        ticketService.start(currentUserAction(id));
         return Result.ok();
     }
 
@@ -72,9 +67,7 @@ public class TicketController {
     @Log(title = "工单回复", businessType = BusinessType.UPDATE)
     public Result<Void> reply(@PathVariable("id") Long id,
                               @RequestBody TicketActionDTO dto) {
-        dto.setTicketId(id);
-        if (dto.getOperatorId() == null) dto.setOperatorId(StpUtil.getLoginIdAsLong());
-        ticketService.reply(dto);
+        ticketService.reply(bindContext(id, dto));
         return Result.ok();
     }
 
@@ -84,9 +77,7 @@ public class TicketController {
     @Log(title = "工单标记解决", businessType = BusinessType.UPDATE)
     public Result<Void> resolve(@PathVariable("id") Long id,
                                 @RequestBody TicketActionDTO dto) {
-        dto.setTicketId(id);
-        if (dto.getOperatorId() == null) dto.setOperatorId(StpUtil.getLoginIdAsLong());
-        ticketService.resolve(dto);
+        ticketService.resolve(bindContext(id, dto));
         return Result.ok();
     }
 
@@ -95,10 +86,7 @@ public class TicketController {
     @SaCheckPermission("sys:ticket:close")
     @Log(title = "工单关闭", businessType = BusinessType.UPDATE)
     public Result<Void> close(@PathVariable("id") Long id) {
-        TicketActionDTO dto = TicketActionDTO.builder()
-                .ticketId(id)
-                .operatorId(StpUtil.getLoginIdAsLong()).build();
-        ticketService.close(dto);
+        ticketService.close(currentUserAction(id));
         return Result.ok();
     }
 
@@ -108,9 +96,7 @@ public class TicketController {
     @Log(title = "工单取消", businessType = BusinessType.UPDATE)
     public Result<Void> cancel(@PathVariable("id") Long id,
                                @RequestBody TicketActionDTO dto) {
-        dto.setTicketId(id);
-        if (dto.getOperatorId() == null) dto.setOperatorId(StpUtil.getLoginIdAsLong());
-        ticketService.cancel(dto);
+        ticketService.cancel(bindContext(id, dto));
         return Result.ok();
     }
 
@@ -120,9 +106,7 @@ public class TicketController {
     @Log(title = "工单重开", businessType = BusinessType.UPDATE)
     public Result<Void> reopen(@PathVariable("id") Long id,
                                @RequestBody TicketActionDTO dto) {
-        dto.setTicketId(id);
-        if (dto.getOperatorId() == null) dto.setOperatorId(StpUtil.getLoginIdAsLong());
-        ticketService.reopen(dto);
+        ticketService.reopen(bindContext(id, dto));
         return Result.ok();
     }
 
@@ -139,5 +123,26 @@ public class TicketController {
     @SaCheckPermission("sys:ticket:list")
     public Result<List<SysTicketLog>> logs(@PathVariable("id") Long id) {
         return Result.ok(ticketService.getLogs(id));
+    }
+
+    /**
+     * 绑定路径参数 ticketId，并在 operatorId 缺省时回填当前登录用户
+     */
+    private TicketActionDTO bindContext(Long ticketId, TicketActionDTO dto) {
+        dto.setTicketId(ticketId);
+        if (dto.getOperatorId() == null) {
+            dto.setOperatorId(StpUtil.getLoginIdAsLong());
+        }
+        return dto;
+    }
+
+    /**
+     * 无请求体场景：用当前登录用户构造 TicketActionDTO
+     */
+    private TicketActionDTO currentUserAction(Long ticketId) {
+        return TicketActionDTO.builder()
+                .ticketId(ticketId)
+                .operatorId(StpUtil.getLoginIdAsLong())
+                .build();
     }
 }
