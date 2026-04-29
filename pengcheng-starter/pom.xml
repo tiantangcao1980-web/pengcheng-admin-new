@@ -49,6 +49,24 @@
             <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- ==================== 可观测性 ==================== -->
+        <!-- Spring Boot Actuator（暴露 /actuator/prometheus 等端点） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Micrometer Prometheus 注册表 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <!-- Loki4j Logback Appender（日志推送到 Loki） -->
+        <dependency>
+            <groupId>com.github.loki4j</groupId>
+            <artifactId>loki-logback-appender</artifactId>
+            <version>1.5.2</version>
+        </dependency>
+
         <!-- ==================== 测试依赖 ==================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

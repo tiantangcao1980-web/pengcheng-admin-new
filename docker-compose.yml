@@ -197,6 +197,65 @@ services:
     networks:
       - masterlife-net
 
+  # ======================== Prometheus ========================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: masterlife-prometheus
+    restart: unless-stopped
+    profiles:
+      - observability
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - masterlife-net
+
+  # ======================== Loki（日志聚合） ========================
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: masterlife-loki
+    restart: unless-stopped
+    profiles:
+      - observability
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    networks:
+      - masterlife-net
+
+  # ======================== Grafana ========================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: masterlife-grafana
+    restart: unless-stopped
+    profiles:
+      - observability
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-masterlife2024}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/v4-mvp-overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - masterlife-net
+
 # ======================== Volumes ========================
 volumes:
   mysql-data:
@@ -209,6 +268,9 @@ volumes:
   onlyoffice-data:
   onlyoffice-logs:
   nginx-logs:
+  prometheus-data:
+  loki-data:
+  grafana-data:
 
 # ======================== Networks ========================
 networks:
