@@ -14,6 +14,8 @@ import com.pengcheng.oa.flow.mapper.ApprovalInstanceMapper;
 import com.pengcheng.oa.flow.mapper.ApprovalRecordMapper;
 import com.pengcheng.oa.flow.service.ApprovalFlowCallback;
 import com.pengcheng.oa.flow.service.ApprovalFlowEngine;
+import com.pengcheng.system.eventbus.event.DomainEvent;
+import com.pengcheng.system.eventbus.event.DomainEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,9 @@ public class ApprovalFlowEngineImpl implements ApprovalFlowEngine {
     private final ApprovalInstanceMapper instanceMapper;
     private final ApprovalRecordMapper recordMapper;
     private final List<ApprovalFlowCallback> callbacks;
+
+    @Autowired(required = false)
+    private DomainEventPublisher domainEventPublisher;
 
     @Autowired
     public ApprovalFlowEngineImpl(ApprovalFlowDefMapper defMapper,
@@ -100,6 +105,7 @@ public class ApprovalFlowEngineImpl implements ApprovalFlowEngine {
         instance.setCurrentNodeDeadline(computeDeadline(first));
         instance.setState(ApprovalInstance.STATE_RUNNING);
         instanceMapper.insert(instance);
+        if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("approval.created", null, java.util.Map.of("id", instance.getId(), "bizType", instance.getBizType(), "bizId", String.valueOf(instance.getBizId()), "applicantId", String.valueOf(instance.getApplicantId()), "summary", instance.getSummary() == null ? "" : instance.getSummary())));
         return instance.getId();
     }
 
@@ -140,6 +146,7 @@ public class ApprovalFlowEngineImpl implements ApprovalFlowEngine {
             instance.setEndTime(LocalDateTime.now());
             instanceMapper.updateById(instance);
             triggerCallback(instance, false);
+            if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("approval.rejected", null, java.util.Map.of("id", instance.getId(), "bizType", instance.getBizType(), "bizId", String.valueOf(instance.getBizId()), "approverId", String.valueOf(dto.getApproverId()), "remark", dto.getRemark() == null ? "" : dto.getRemark())));
             return;
         }
         // 通过 → 进入下一节点 / 终态
@@ -293,6 +300,7 @@ public class ApprovalFlowEngineImpl implements ApprovalFlowEngine {
             instance.setCurrentNodeDeadline(null);
             instanceMapper.updateById(instance);
             triggerCallback(instance, true);
+            if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("approval.approved", null, java.util.Map.of("id", instance.getId(), "bizType", instance.getBizType(), "bizId", String.valueOf(instance.getBizId()), "applicantId", String.valueOf(instance.getApplicantId()))));
             return;
         }
         ApprovalFlowNode nextNode = next.get();

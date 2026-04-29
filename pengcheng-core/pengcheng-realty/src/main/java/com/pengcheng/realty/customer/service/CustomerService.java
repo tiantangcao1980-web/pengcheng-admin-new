@@ -22,6 +22,8 @@ import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
 import com.pengcheng.realty.customer.mapper.CustomerProjectMapper;
 import com.pengcheng.realty.project.entity.Project;
 import com.pengcheng.realty.project.mapper.ProjectMapper;
+import com.pengcheng.system.eventbus.event.DomainEvent;
+import com.pengcheng.system.eventbus.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +58,9 @@ public class CustomerService {
      */
     @Autowired(required = false)
     private CustomerDuplicateChecker duplicateChecker;
+
+    @Autowired(required = false)
+    private DomainEventPublisher domainEventPublisher;
 
     /** 默认保护期天数 */
     private static final int DEFAULT_PROTECTION_DAYS = 3;
@@ -129,6 +134,7 @@ public class CustomerService {
 
         // 广播数据变更事件
         eventPublisher.publishEvent(new DataChangeEvent(this, "create", "customer", customer.getId()));
+        if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("customer.created", null, java.util.Map.of("id", customer.getId(), "customerName", customer.getCustomerName(), "phoneMasked", customer.getPhoneMasked(), "allianceId", String.valueOf(customer.getAllianceId()), "createdBy", String.valueOf(customer.getCreatorId()))));
 
         return CustomerCreateResultVO.builder()
                 .customerId(customer.getId())

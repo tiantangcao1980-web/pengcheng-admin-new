@@ -11,6 +11,8 @@ import com.pengcheng.crm.lead.entity.CrmLead;
 import com.pengcheng.crm.lead.entity.CrmLeadAssignment;
 import com.pengcheng.crm.lead.mapper.CrmLeadAssignmentMapper;
 import com.pengcheng.crm.lead.mapper.CrmLeadMapper;
+import com.pengcheng.system.eventbus.event.DomainEvent;
+import com.pengcheng.system.eventbus.event.DomainEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,9 @@ public class LeadService {
 
     @Autowired
     private CrmLeadAssignmentMapper assignmentMapper;
+
+    @Autowired(required = false)
+    private DomainEventPublisher domainEventPublisher;
 
     public CrmLead create(LeadCreateDTO dto) {
         if (dto == null) {
@@ -55,6 +60,7 @@ public class LeadService {
                 .remark(dto.getRemark())
                 .build();
         leadMapper.insert(lead);
+        if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("lead.created", lead.getTenantId(), java.util.Map.of("id", lead.getId(), "leadNo", lead.getLeadNo(), "name", lead.getName(), "phone", lead.getPhoneMasked(), "source", lead.getSource(), "ownerId", String.valueOf(lead.getOwnerId()), "createdBy", String.valueOf(lead.getCreateBy()))));
         return lead;
     }
 
@@ -113,6 +119,7 @@ public class LeadService {
             lead.setStatus(2);
             lead.setAssignTime(LocalDateTime.now());
             leadMapper.updateById(lead);
+            if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("lead.assigned", lead.getTenantId(), java.util.Map.of("id", lead.getId(), "leadNo", lead.getLeadNo(), "toUserId", String.valueOf(target), "assignedBy", String.valueOf(currentUserId))));
             affected++;
         }
         return affected;
@@ -142,6 +149,7 @@ public class LeadService {
             lead.setRemark(dto.getRemark());
         }
         leadMapper.updateById(lead);
+        if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("lead.converted", lead.getTenantId(), java.util.Map.of("id", lead.getId(), "leadNo", lead.getLeadNo(), "customerId", String.valueOf(lead.getCustomerId()), "convertTime", lead.getConvertTime().toString())));
         return lead;
     }
 
