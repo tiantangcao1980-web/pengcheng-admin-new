@@ -14,6 +14,10 @@
     <name>MasterLife System</name>
     <description>系统核心模块 - RBAC权限管理、认证鉴权、系统配置</description>
 
+    <properties>
+        <jacoco.skip>false</jacoco.skip>
+    </properties>
+
     <dependencies>
         <!-- 公共基础（TenantContextHolder / LocaleContextHolder / 错误码等） -->
         <dependency>
