@@ -95,6 +95,12 @@
             <artifactId>pengcheng-bi</artifactId>
         </dependency>
 
+        <!-- V4 Phase 6 IM 集成 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-integration</artifactId>
+        </dependency>
+
         <!-- WebSocket基础设施 -->
         <dependency>
             <groupId>com.pengcheng</groupId>
