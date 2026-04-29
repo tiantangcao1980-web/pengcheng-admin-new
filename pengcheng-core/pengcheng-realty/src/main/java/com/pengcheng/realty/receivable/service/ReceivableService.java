@@ -13,6 +13,8 @@ import com.pengcheng.realty.receivable.dto.ReceivableRecordCreateDTO;
 import com.pengcheng.realty.receivable.entity.ReceivableAlert;
 import com.pengcheng.realty.receivable.entity.ReceivablePlan;
 import com.pengcheng.realty.receivable.entity.ReceivableRecord;
+import com.pengcheng.realty.receivable.enums.OverdueAlertLevel;
+import com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent;
 import com.pengcheng.realty.receivable.mapper.ReceivableAlertMapper;
 import com.pengcheng.realty.receivable.mapper.ReceivablePlanMapper;
 import com.pengcheng.realty.receivable.mapper.ReceivableRecordMapper;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -240,7 +243,7 @@ public class ReceivableService {
             }
 
             if (now == ReceivablePlan.STATUS_OVERDUE) {
-                if (upsertAlert(p.getId(), ReceivableAlert.TYPE_OVERDUE)) {
+                if (processOverdueAlert(p, today)) {
                     overdueNew++;
                 }
             } else if (p.getDueDate() != null
@@ -293,6 +296,71 @@ public class ReceivableService {
             alertMapper.updateById(update);
         }
         return false;
+    }
+
+    /**
+     * 处理逾期告警（含三档升级策略 T+0/T+3/T+7/T+15）。
+     *
+     * 语义：
+     *   - notifyCount 表示"已发档位数"：FIRST 已发=1, T3=2, T7=3, T15=4
+     *   - 仅在升档时插入新告警 / 更新 notifyCount + 发布事件
+     *   - 同档位重复扫描不会重发，避免通知风暴
+     *
+     * @return true 表示本次触发了新通知（首次插入或升档），用于统计
+     */
+    private boolean processOverdueAlert(ReceivablePlan plan, LocalDate today) {
+        int daysOverdue = (int) ChronoUnit.DAYS.between(plan.getDueDate(), today);
+        OverdueAlertLevel target = OverdueAlertLevel.of(daysOverdue);
+        if (target == null) return false;
+
+        ReceivableAlert existing = alertMapper.selectOne(new LambdaQueryWrapper<ReceivableAlert>()
+                .eq(ReceivableAlert::getPlanId, plan.getId())
+                .eq(ReceivableAlert::getAlertType, ReceivableAlert.TYPE_OVERDUE)
+                .eq(ReceivableAlert::getHandled, ReceivableAlert.HANDLED_NO));
+
+        int sentLevel = (existing == null || existing.getNotifyCount() == null)
+                ? -1 : existing.getNotifyCount() - 1;
+
+        // 当前档位已发过则跳过，避免通知风暴
+        if (target.getOrder() <= sentLevel) {
+            return false;
+        }
+
+        int targetNotifyCount = target.getOrder() + 1;
+        if (existing == null) {
+            try {
+                alertMapper.insert(ReceivableAlert.builder()
+                        .planId(plan.getId())
+                        .alertType(ReceivableAlert.TYPE_OVERDUE)
+                        .alertTime(LocalDateTime.now())
+                        .lastNotified(LocalDateTime.now())
+                        .notifyCount(targetNotifyCount)
+                        .handled(ReceivableAlert.HANDLED_NO)
+                        .build());
+            } catch (DuplicateKeyException e) {
+                log.debug("[回款告警] 唯一索引冲突，回退更新 planId={}", plan.getId());
+                ReceivableAlert reload = alertMapper.selectOne(new LambdaQueryWrapper<ReceivableAlert>()
+                        .eq(ReceivableAlert::getPlanId, plan.getId())
+                        .eq(ReceivableAlert::getAlertType, ReceivableAlert.TYPE_OVERDUE));
+                if (reload != null) {
+                    reload.setLastNotified(LocalDateTime.now());
+                    reload.setNotifyCount(targetNotifyCount);
+                    alertMapper.updateById(reload);
+                }
+            }
+        } else {
+            existing.setLastNotified(LocalDateTime.now());
+            existing.setNotifyCount(targetNotifyCount);
+            alertMapper.updateById(existing);
+        }
+
+        BigDecimal unpaid = nullToZero(plan.getDueAmount()).subtract(nullToZero(plan.getPaidAmount()));
+        eventPublisher.publishEvent(new ReceivableOverdueAlertEvent(this,
+                plan.getId(), plan.getDealId(), target,
+                daysOverdue, plan.getDueAmount(), unpaid, plan.getDueDate()));
+        log.info("[回款告警] planId={} 升档至 {} (daysOverdue={})",
+                plan.getId(), target.name(), daysOverdue);
+        return true;
     }
 
     private void closeAlertsOfPlan(Long planId, Long handledBy, String remark) {

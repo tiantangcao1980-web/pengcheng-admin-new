@@ -9,6 +9,10 @@ import com.pengcheng.realty.commission.dto.*;
 import com.pengcheng.realty.commission.entity.Commission;
 import com.pengcheng.realty.commission.entity.CommissionChangeLog;
 import com.pengcheng.realty.commission.entity.CommissionDetail;
+import com.pengcheng.realty.commission.entity.CommissionApproval;
+import com.pengcheng.realty.commission.enums.CommissionApprovalNode;
+import com.pengcheng.realty.commission.event.CommissionApprovalEvent;
+import com.pengcheng.realty.commission.mapper.CommissionApprovalMapper;
 import com.pengcheng.realty.commission.mapper.CommissionChangeLogMapper;
 import com.pengcheng.realty.commission.mapper.CommissionDetailMapper;
 import com.pengcheng.realty.commission.mapper.CommissionMapper;
@@ -47,6 +51,7 @@ public class CommissionService {
     private final CommissionMapper commissionMapper;
     private final CommissionDetailMapper commissionDetailMapper;
     private final CommissionChangeLogMapper commissionChangeLogMapper;
+    private final CommissionApprovalMapper commissionApprovalMapper;
     private final CustomerDealMapper customerDealMapper;
     private final RealtyCustomerMapper realtyCustomerMapper;
     private final CustomerProjectMapper customerProjectMapper;
@@ -69,6 +74,10 @@ public class CommissionService {
         validateCreateDTO(dto);
         validateCommissionEquation(dto.getReceivableAmount(), dto.getPayableAmount(), dto.getPlatformFee());
 
+        // V17：propertyType + customerOrigin 双维度，缺省走 RESIDENTIAL/DOMESTIC
+        String propertyType = dto.getPropertyType() == null ? "RESIDENTIAL" : dto.getPropertyType();
+        String customerOrigin = dto.getCustomerOrigin() == null ? "DOMESTIC" : dto.getCustomerOrigin();
+
         Commission commission = Commission.builder()
                 .dealId(dto.getDealId())
                 .projectId(dto.getProjectId())
@@ -76,19 +85,26 @@ public class CommissionService {
                 .receivableAmount(dto.getReceivableAmount())
                 .payableAmount(dto.getPayableAmount())
                 .platformFee(dto.getPlatformFee())
+                .propertyType(propertyType)
+                .customerOrigin(customerOrigin)
                 .auditStatus(AUDIT_STATUS_PENDING)
                 .build();
         commissionMapper.insert(commission);
 
-        // 录入佣金明细
+        // 录入佣金明细（V17：含 4 角色提成字段）
         if (dto.getDetail() != null) {
+            CommissionDetailDTO d = dto.getDetail();
             CommissionDetail detail = CommissionDetail.builder()
                     .commissionId(commission.getId())
-                    .baseCommission(dto.getDetail().getBaseCommission())
-                    .jumpPointCommission(dto.getDetail().getJumpPointCommission())
-                    .cashReward(dto.getDetail().getCashReward())
-                    .firstDealReward(dto.getDetail().getFirstDealReward())
-                    .platformReward(dto.getDetail().getPlatformReward())
+                    .baseCommission(d.getBaseCommission())
+                    .jumpPointCommission(d.getJumpPointCommission())
+                    .cashReward(d.getCashReward())
+                    .firstDealReward(d.getFirstDealReward())
+                    .platformReward(d.getPlatformReward())
+                    .dealerReward(d.getDealerReward())
+                    .sitePersonReward(d.getSitePersonReward())
+                    .channelSpecialistReward(d.getChannelSpecialistReward())
+                    .channelManagerReward(d.getChannelManagerReward())
                     .build();
             commissionDetailMapper.insert(detail);
         }
@@ -475,5 +491,173 @@ public class CommissionService {
 
     private BigDecimal nullToZero(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    // ============================================================
+    // 多级审批流（业务员 → 主管 → 财务 → 放款）
+    // 旧 auditCommission(CommissionAuditDTO) 保留兼容存量调用方
+    // ============================================================
+
+    /**
+     * 业务员提交审批
+     * 允许的当前节点：null / DRAFT / REJECTED（重提）
+     * 流转：→ SUBMITTED
+     */
+    @Transactional
+    public void submitForApproval(CommissionSubmitDTO dto) {
+        if (dto == null || dto.getCommissionId() == null) {
+            throw new IllegalArgumentException("佣金ID不能为空");
+        }
+        if (dto.getSubmitterId() == null) {
+            throw new IllegalArgumentException("提交人ID不能为空");
+        }
+
+        Commission commission = loadCommission(dto.getCommissionId());
+        String currentNode = commission.getApprovalNode();
+
+        boolean canSubmit = currentNode == null
+                || CommissionApprovalNode.DRAFT.name().equals(currentNode)
+                || CommissionApprovalNode.REJECTED.name().equals(currentNode);
+        if (!canSubmit) {
+            throw new ApprovalFlowException("当前节点不可提交：" + currentNode);
+        }
+
+        String fromNode = currentNode == null ? CommissionApprovalNode.DRAFT.name() : currentNode;
+        String toNode = CommissionApprovalNode.SUBMITTED.name();
+
+        commission.setApprovalNode(toNode);
+        commission.setSubmittedBy(dto.getSubmitterId());
+        commission.setSubmittedTime(LocalDateTime.now());
+        commission.setAuditStatus(AUDIT_STATUS_PENDING);
+        commissionMapper.updateById(commission);
+
+        recordChangeLog(commission.getId(), "approvalNode", fromNode, toNode, dto.getSubmitterId());
+        eventPublisher.publishEvent(new CommissionApprovalEvent(this, commission.getId(),
+                fromNode, toNode, dto.getSubmitterId(),
+                CommissionApprovalEvent.ACTION_SUBMIT, dto.getRemark()));
+    }
+
+    /**
+     * 主管审批
+     * 允许的当前节点：SUBMITTED
+     * 通过 → MANAGER_APPROVED；驳回 → REJECTED
+     */
+    @Transactional
+    public void approveByManager(CommissionApprovalActionDTO dto) {
+        processApprovalNode(dto,
+                CommissionApprovalNode.SUBMITTED,
+                CommissionApprovalNode.MANAGER_APPROVED,
+                CommissionApproval.NODE_MANAGER,
+                CommissionApproval.ORDER_MANAGER);
+    }
+
+    /**
+     * 财务审批
+     * 允许的当前节点：MANAGER_APPROVED
+     * 通过 → FINANCE_APPROVED；驳回 → REJECTED
+     */
+    @Transactional
+    public void approveByFinance(CommissionApprovalActionDTO dto) {
+        processApprovalNode(dto,
+                CommissionApprovalNode.MANAGER_APPROVED,
+                CommissionApprovalNode.FINANCE_APPROVED,
+                CommissionApproval.NODE_FINANCE,
+                CommissionApproval.ORDER_FINANCE);
+    }
+
+    /**
+     * 放款标记
+     * 允许的当前节点：FINANCE_APPROVED
+     * 通过 → PAID（同时记录 paidBy / paidTime）；驳回 → REJECTED
+     */
+    @Transactional
+    public void markPaid(CommissionApprovalActionDTO dto) {
+        // 处理通用流转 + 节点记录
+        processApprovalNode(dto,
+                CommissionApprovalNode.FINANCE_APPROVED,
+                CommissionApprovalNode.PAID,
+                CommissionApproval.NODE_PAYMENT,
+                CommissionApproval.ORDER_PAYMENT);
+
+        // 通过时额外记录放款字段
+        if (Boolean.TRUE.equals(dto.getApproved())) {
+            Commission commission = loadCommission(dto.getCommissionId());
+            commission.setPaidBy(dto.getApproverId());
+            commission.setPaidTime(LocalDateTime.now());
+            commission.setAuditStatus(AUDIT_STATUS_APPROVED);
+            commissionMapper.updateById(commission);
+        }
+    }
+
+    /**
+     * 通用审批节点处理：状态机校验 + 记录审批节点 + 发事件
+     */
+    private void processApprovalNode(CommissionApprovalActionDTO dto,
+                                     CommissionApprovalNode expectedFrom,
+                                     CommissionApprovalNode approvedTo,
+                                     String nodeName,
+                                     int approvalOrder) {
+        if (dto == null || dto.getCommissionId() == null) {
+            throw new IllegalArgumentException("佣金ID不能为空");
+        }
+        if (dto.getApproverId() == null) {
+            throw new IllegalArgumentException("审批人ID不能为空");
+        }
+        if (dto.getApproved() == null) {
+            throw new IllegalArgumentException("审批结果不能为空");
+        }
+        boolean approved = dto.getApproved();
+        if (!approved && (dto.getRemark() == null || dto.getRemark().isBlank())) {
+            throw new IllegalArgumentException("驳回必须填写备注");
+        }
+
+        Commission commission = loadCommission(dto.getCommissionId());
+        String currentNode = commission.getApprovalNode();
+        if (!expectedFrom.name().equals(currentNode)) {
+            throw new ApprovalFlowException(
+                    String.format("当前节点 %s 不可执行 %s 审批，期望节点 %s",
+                            currentNode, nodeName, expectedFrom.name()));
+        }
+
+        String toNode = approved ? approvedTo.name() : CommissionApprovalNode.REJECTED.name();
+        String action = approved ? CommissionApprovalEvent.ACTION_APPROVE : CommissionApprovalEvent.ACTION_REJECT;
+
+        // 1. 写审批节点记录
+        CommissionApproval record = CommissionApproval.builder()
+                .commissionId(commission.getId())
+                .node(nodeName)
+                .approverId(dto.getApproverId())
+                .result(approved ? CommissionApproval.RESULT_APPROVED : CommissionApproval.RESULT_REJECTED)
+                .remark(dto.getRemark())
+                .approvalOrder(approvalOrder)
+                .approvalTime(LocalDateTime.now())
+                .build();
+        commissionApprovalMapper.insert(record);
+
+        // 2. 更新主表节点 + 旧字段
+        commission.setApprovalNode(toNode);
+        commission.setAuditRemark(dto.getRemark());
+        commission.setAuditorId(dto.getApproverId());
+        commission.setAuditTime(LocalDateTime.now());
+        if (!approved) {
+            commission.setAuditStatus(AUDIT_STATUS_REJECTED);
+        }
+        commissionMapper.updateById(commission);
+
+        // 3. 变更日志 + 事件
+        recordChangeLog(commission.getId(), "approvalNode", currentNode, toNode, dto.getApproverId());
+        eventPublisher.publishEvent(new CommissionApprovalEvent(this, commission.getId(),
+                currentNode, toNode, dto.getApproverId(), action, dto.getRemark()));
+    }
+
+    /**
+     * 加载佣金记录，不存在则抛业务异常
+     */
+    private Commission loadCommission(Long commissionId) {
+        Commission commission = commissionMapper.selectById(commissionId);
+        if (commission == null) {
+            throw new IllegalArgumentException("佣金记录不存在：" + commissionId);
+        }
+        return commission;
     }
 }

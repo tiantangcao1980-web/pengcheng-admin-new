@@ -151,6 +151,18 @@
 			}
 		},
 		{
+			"path": "pages/apply/material",
+			"style": {
+				"navigationBarTitleText": "物料申请"
+			}
+		},
+		{
+			"path": "pages/apply/car",
+			"style": {
+				"navigationBarTitleText": "用车申请"
+			}
+		},
+		{
 			"path": "pages/apply/list",
 			"style": {
 				"navigationBarTitleText": "申请记录"

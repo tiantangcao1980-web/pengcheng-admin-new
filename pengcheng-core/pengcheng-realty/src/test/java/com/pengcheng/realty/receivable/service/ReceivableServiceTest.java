@@ -250,9 +250,10 @@ class ReceivableServiceTest {
     }
 
     @Test
-    @DisplayName("同一分期重复触发 → 告警 notify_count 累加，不 insert")
-    void runOverdueCheck_reuseExistingAlert() {
+    @DisplayName("同档位重复触发 → 不升档、不更新表、不发事件（避免通知风暴）")
+    void runOverdueCheck_sameLevel_noUpgrade() {
         LocalDate today = LocalDate.now();
+        // daysOverdue=3 命中 T3 档（level 1）
         ReceivablePlan overdue = ReceivablePlan.builder()
                 .dueAmount(new BigDecimal("100")).paidAmount(BigDecimal.ZERO)
                 .dueDate(today.minusDays(3))
@@ -260,6 +261,7 @@ class ReceivableServiceTest {
         overdue.setId(1L);
         when(planMapper.selectList(any(Wrapper.class))).thenReturn(List.of(overdue));
 
+        // 已发到 T3：notifyCount = 2 (level 1 + 1)
         ReceivableAlert existing = ReceivableAlert.builder()
                 .id(99L).planId(1L).alertType(ReceivableAlert.TYPE_OVERDUE)
                 .notifyCount(2).handled(ReceivableAlert.HANDLED_NO).build();
@@ -268,9 +270,122 @@ class ReceivableServiceTest {
         service.runOverdueCheck();
 
         verify(alertMapper, never()).insert(any());
+        verify(alertMapper, never()).updateById(any());
+        verify(publisher, never()).publishEvent(any(
+                com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent.class));
+    }
+
+    @Test
+    @DisplayName("跨档升级 (FIRST→T3): notifyCount=1 → daysOverdue=3 触发升级，notifyCount=2 + 发事件")
+    void runOverdueCheck_upgradeToT3() {
+        LocalDate today = LocalDate.now();
+        ReceivablePlan overdue = ReceivablePlan.builder()
+                .dealId(500L)
+                .dueAmount(new BigDecimal("100")).paidAmount(BigDecimal.ZERO)
+                .dueDate(today.minusDays(3))
+                .status(ReceivablePlan.STATUS_OVERDUE).build();
+        overdue.setId(1L);
+        when(planMapper.selectList(any(Wrapper.class))).thenReturn(List.of(overdue));
+
+        // 已发首次告警 FIRST：notifyCount = 1 (level 0 + 1)
+        ReceivableAlert existing = ReceivableAlert.builder()
+                .id(99L).planId(1L).alertType(ReceivableAlert.TYPE_OVERDUE)
+                .notifyCount(1).handled(ReceivableAlert.HANDLED_NO).build();
+        when(alertMapper.selectOne(any(Wrapper.class))).thenReturn(existing);
+
+        int[] r = service.runOverdueCheck();
+
+        assertThat(r[0]).isEqualTo(1);
         ArgumentCaptor<ReceivableAlert> cap = ArgumentCaptor.forClass(ReceivableAlert.class);
         verify(alertMapper).updateById(cap.capture());
-        assertThat(cap.getValue().getNotifyCount()).isEqualTo(3);
+        assertThat(cap.getValue().getNotifyCount()).isEqualTo(2);  // T3 level 1 + 1
+
+        ArgumentCaptor<com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent> evt
+                = ArgumentCaptor.forClass(com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent.class);
+        verify(publisher).publishEvent(evt.capture());
+        assertThat(evt.getValue().getLevel())
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T3);
+        assertThat(evt.getValue().getDaysOverdue()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("跨多档升级 (FIRST→T15): notifyCount=1 → daysOverdue=20 直接到 T15")
+    void runOverdueCheck_upgradeToT15Directly() {
+        LocalDate today = LocalDate.now();
+        ReceivablePlan overdue = ReceivablePlan.builder()
+                .dealId(500L)
+                .dueAmount(new BigDecimal("500")).paidAmount(new BigDecimal("100"))
+                .dueDate(today.minusDays(20))
+                .status(ReceivablePlan.STATUS_OVERDUE).build();
+        overdue.setId(1L);
+        when(planMapper.selectList(any(Wrapper.class))).thenReturn(List.of(overdue));
+
+        ReceivableAlert existing = ReceivableAlert.builder()
+                .id(99L).planId(1L).alertType(ReceivableAlert.TYPE_OVERDUE)
+                .notifyCount(1).handled(ReceivableAlert.HANDLED_NO).build();
+        when(alertMapper.selectOne(any(Wrapper.class))).thenReturn(existing);
+
+        service.runOverdueCheck();
+
+        ArgumentCaptor<ReceivableAlert> cap = ArgumentCaptor.forClass(ReceivableAlert.class);
+        verify(alertMapper).updateById(cap.capture());
+        assertThat(cap.getValue().getNotifyCount()).isEqualTo(4);  // T15 level 3 + 1
+
+        ArgumentCaptor<com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent> evt
+                = ArgumentCaptor.forClass(com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent.class);
+        verify(publisher).publishEvent(evt.capture());
+        assertThat(evt.getValue().getLevel())
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T15);
+        assertThat(evt.getValue().getUnpaidAmount())
+                .isEqualByComparingTo(new BigDecimal("400"));  // 500 - 100
+    }
+
+    @Test
+    @DisplayName("首次发现逾期 (existing=null, daysOverdue=1): 插入告警 notifyCount=1 + 发 FIRST 事件")
+    void runOverdueCheck_firstAlert() {
+        LocalDate today = LocalDate.now();
+        ReceivablePlan overdue = ReceivablePlan.builder()
+                .dealId(500L)
+                .dueAmount(new BigDecimal("100")).paidAmount(BigDecimal.ZERO)
+                .dueDate(today.minusDays(1))  // 昨天到期 → daysOverdue=1 → FIRST
+                .status(ReceivablePlan.STATUS_OVERDUE).build();
+        overdue.setId(1L);
+        when(planMapper.selectList(any(Wrapper.class))).thenReturn(List.of(overdue));
+        when(alertMapper.selectOne(any(Wrapper.class))).thenReturn(null);
+
+        service.runOverdueCheck();
+
+        ArgumentCaptor<ReceivableAlert> cap = ArgumentCaptor.forClass(ReceivableAlert.class);
+        verify(alertMapper).insert(cap.capture());
+        assertThat(cap.getValue().getNotifyCount()).isEqualTo(1);  // FIRST level 0 + 1
+
+        ArgumentCaptor<com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent> evt
+                = ArgumentCaptor.forClass(com.pengcheng.realty.receivable.event.ReceivableOverdueAlertEvent.class);
+        verify(publisher).publishEvent(evt.capture());
+        assertThat(evt.getValue().getLevel())
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.FIRST);
+    }
+
+    @Test
+    @DisplayName("OverdueAlertLevel.of: T+0/3/7/15 边界")
+    void overdueAlertLevel_boundaries() {
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(-1)).isNull();
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(0))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.FIRST);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(2))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.FIRST);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(3))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T3);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(6))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T3);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(7))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T7);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(14))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T7);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(15))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T15);
+        assertThat(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.of(100))
+                .isEqualTo(com.pengcheng.realty.receivable.enums.OverdueAlertLevel.T15);
     }
 
     // ---------- 5. stats ----------

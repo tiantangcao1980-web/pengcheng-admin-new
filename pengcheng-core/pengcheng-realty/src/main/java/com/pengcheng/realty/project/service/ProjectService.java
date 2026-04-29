@@ -187,6 +187,56 @@ public class ProjectService {
     }
 
     /**
+     * 按物业类型 + 客户籍贯双维度查找有效佣金规则（V17 新增）
+     *
+     * 选择优先级（从精确到宽松）：
+     *   1. 物业类型 + 客户籍贯都精确匹配
+     *   2. 物业类型匹配（任意客户籍贯）
+     *   3. 客户籍贯匹配（任意物业类型）
+     *   4. 项目通用规则（回退到 getActiveCommissionRule(projectId)）
+     *
+     * @param projectId 楼盘ID
+     * @param propertyType 物业类型（RESIDENTIAL/COMMERCIAL/APARTMENT/OFFICE/OTHER），null 跳过
+     * @param customerOrigin 客户籍贯（DOMESTIC/OVERSEAS），null 跳过
+     */
+    public ProjectCommissionRule getActiveCommissionRule(Long projectId,
+                                                         String propertyType,
+                                                         String customerOrigin) {
+        // 1. 双维度精确匹配
+        ProjectCommissionRule rule = querySingleRule(projectId, propertyType, customerOrigin);
+        if (rule != null) return rule;
+        // 2. 仅物业匹配
+        if (propertyType != null) {
+            rule = querySingleRule(projectId, propertyType, null);
+            if (rule != null) return rule;
+        }
+        // 3. 仅客户籍贯匹配
+        if (customerOrigin != null) {
+            rule = querySingleRule(projectId, null, customerOrigin);
+            if (rule != null) return rule;
+        }
+        // 4. 回退到通用
+        return getActiveCommissionRule(projectId);
+    }
+
+    private ProjectCommissionRule querySingleRule(Long projectId,
+                                                  String propertyType,
+                                                  String customerOrigin) {
+        if (propertyType == null && customerOrigin == null) return null;
+        LambdaQueryWrapper<ProjectCommissionRule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ProjectCommissionRule::getProjectId, projectId)
+                .eq(ProjectCommissionRule::getStatus, 1);
+        if (propertyType != null) {
+            wrapper.eq(ProjectCommissionRule::getPropertyType, propertyType);
+        }
+        if (customerOrigin != null) {
+            wrapper.eq(ProjectCommissionRule::getCustomerOrigin, customerOrigin);
+        }
+        wrapper.orderByDesc(ProjectCommissionRule::getVersion).last("LIMIT 1");
+        return commissionRuleMapper.selectOne(wrapper);
+    }
+
+    /**
      * 获取项目所有佣金规则版本
      */
     public List<ProjectCommissionRule> getCommissionRuleVersions(Long projectId) {

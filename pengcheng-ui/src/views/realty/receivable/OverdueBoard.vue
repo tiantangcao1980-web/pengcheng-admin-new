@@ -34,7 +34,13 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import { NTag, type DataTableColumns } from 'naive-ui'
-import type { ReceivableAlertRecord, ReceivableStatsRecord } from '@/api/receivable'
+import {
+  levelFromNotifyCount,
+  OVERDUE_LEVEL_LABEL,
+  type OverdueAlertLevel,
+  type ReceivableAlertRecord,
+  type ReceivableStatsRecord
+} from '@/api/receivable'
 
 defineProps<{
   stats: ReceivableStatsRecord | null
@@ -53,6 +59,13 @@ const alertTypeMap: Record<number, { text: string; type: 'warning' | 'error' }> 
   2: { text: '即将到期', type: 'warning' }
 }
 
+const levelTagType: Record<OverdueAlertLevel, 'info' | 'warning' | 'error'> = {
+  FIRST: 'info',
+  T3: 'warning',
+  T7: 'error',
+  T15: 'error'
+}
+
 const columns: DataTableColumns<ReceivableAlertRecord> = [
   { title: '告警ID', key: 'id', width: 90 },
   { title: '分期ID', key: 'planId', width: 90 },
@@ -64,6 +77,20 @@ const columns: DataTableColumns<ReceivableAlertRecord> = [
       h(NTag, { type: alertTypeMap[row.alertType]?.type || 'warning', size: 'small' }, {
         default: () => alertTypeMap[row.alertType]?.text || '未知'
       })
+  },
+  {
+    title: '当前档位',
+    key: 'level',
+    width: 120,
+    render: row => {
+      // 仅对逾期告警 (alertType=1) 渲染档位
+      if (row.alertType !== 1) return '-'
+      const level = levelFromNotifyCount(row.notifyCount)
+      if (!level) return '-'
+      return h(NTag, { type: levelTagType[level], size: 'small' }, {
+        default: () => OVERDUE_LEVEL_LABEL[level]
+      })
+    }
   },
   { title: '首次告警', key: 'alertTime', width: 180 },
   { title: '最后通知', key: 'lastNotified', width: 180 },

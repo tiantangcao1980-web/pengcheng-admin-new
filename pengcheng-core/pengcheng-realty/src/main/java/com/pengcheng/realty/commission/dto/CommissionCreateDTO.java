@@ -34,6 +34,19 @@ public class CommissionCreateDTO {
     /** 公司平台费（必填） */
     private BigDecimal platformFee;
 
+    /**
+     * 物业类型（V17 新增，决定 ProjectCommissionRule 选哪条）
+     * 取值：RESIDENTIAL/COMMERCIAL/APARTMENT/OFFICE/OTHER
+     * 不传时按 RESIDENTIAL 处理
+     */
+    private String propertyType;
+
+    /**
+     * 客户籍贯（V17 新增）：DOMESTIC内地 / OVERSEAS境外
+     * 不传时按 DOMESTIC 处理
+     */
+    private String customerOrigin;
+
     /** 佣金明细 */
     private CommissionDetailDTO detail;
 }
