@@ -15,6 +15,12 @@
     <description>系统核心模块 - RBAC权限管理、认证鉴权、系统配置</description>
 
     <dependencies>
+        <!-- 公共基础（TenantContextHolder / LocaleContextHolder / 错误码等） -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-common</artifactId>
+        </dependency>
+
         <!-- 基础设施模块 -->
         <dependency>
             <groupId>com.pengcheng</groupId>

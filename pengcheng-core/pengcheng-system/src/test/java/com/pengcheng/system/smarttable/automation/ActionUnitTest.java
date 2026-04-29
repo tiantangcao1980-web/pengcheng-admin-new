@@ -2,8 +2,6 @@ package com.pengcheng.system.smarttable.automation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pengcheng.mail.EmailService;
-import com.pengcheng.message.entity.Notification;
-import com.pengcheng.message.service.NotificationService;
 import com.pengcheng.system.smarttable.automation.action.*;
 import com.pengcheng.system.smarttable.entity.SmartTableRecord;
 import com.pengcheng.system.smarttable.mapper.SmartTableRecordMapper;
@@ -108,22 +106,33 @@ class ActionUnitTest {
     }
 
     // ==================== SendNotificationAction ====================
-
-    @Mock
-    private NotificationService notificationService;
+    // SendNotificationAction 已改为 ApplicationContext 反射软依赖（避免循环依赖
+    // pengcheng-system → pengcheng-message → pengcheng-system）。
+    // 无 NotificationService Bean 时降级为 WARN 日志，不抛异常。
+    // 完整集成测试需在 starter 模块带 message classpath 跑，单元测仅校验 SPI 契约。
 
     @Test
-    @DisplayName("SendNotificationAction：创建通知，userId 正确映射")
-    void sendNotificationAction_createsNotification() {
-        SendNotificationAction action = new SendNotificationAction(notificationService);
-        Map<String, Object> params = Map.of("userId", 999L, "title", "通知{{name}}", "content", "内容");
-        action.execute(params, baseEvent());
+    @DisplayName("SendNotificationAction：缺 userId 抛 IllegalArgumentException")
+    void sendNotificationAction_missingUserId_throws() {
+        org.springframework.context.ApplicationContext ctx =
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationContext.class);
+        SendNotificationAction action = new SendNotificationAction(ctx);
+        Map<String, Object> params = Map.of("title", "x", "content", "y");
+        assertThatThrownBy(() -> action.execute(params, baseEvent()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("userId");
+    }
 
-        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
-        verify(notificationService).createNotification(captor.capture());
-        Notification n = captor.getValue();
-        assertThat(n.getUserId()).isEqualTo(999L);
-        assertThat(n.getTitle()).isEqualTo("通知Alice");
-        assertThat(n.getReadStatus()).isEqualTo(0);
+    @Test
+    @DisplayName("SendNotificationAction：NotificationService 不在 classpath 时静默降级（不抛）")
+    void sendNotificationAction_softDependencyDegrades() {
+        org.springframework.context.ApplicationContext ctx =
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationContext.class);
+        // 即使 ctx.getBean 抛异常，action.execute 也不应传染（仅 WARN 日志）
+        when(ctx.getBean(any(Class.class))).thenThrow(new RuntimeException("not loaded"));
+        SendNotificationAction action = new SendNotificationAction(ctx);
+        Map<String, Object> params = Map.of("userId", 999L, "title", "通知{{name}}", "content", "内容");
+        // 不应抛
+        action.execute(params, baseEvent());
     }
 }

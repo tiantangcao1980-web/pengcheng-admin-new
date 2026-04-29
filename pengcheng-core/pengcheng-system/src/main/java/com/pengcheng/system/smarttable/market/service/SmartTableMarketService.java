@@ -47,8 +47,9 @@ public class SmartTableMarketService {
     public void shareTemplate(Long templateId, Long authorUserId, String authorName, String tags) {
         SmartTableTemplate t = templateMapper.selectById(templateId);
         if (t == null) throw new IllegalArgumentException("模板不存在");
-        // 内置模板不可改 share_status
-        if (Integer.valueOf(1).equals(t.getBuiltIn())) {
+        // 内置模板不可改 share_status（修复：SmartTableTemplate.builtIn 是 Boolean，
+        // 原代码 Integer.valueOf(1).equals(Boolean) 永远 false 导致内置模板保护失效）
+        if (Boolean.TRUE.equals(t.getBuiltIn())) {
             throw new IllegalStateException("内置模板已为公开状态，无需分享");
         }
         // 用反射或扩展字段设值 — 实际通过 update SQL 比较稳，避免 entity 字段同步问题
