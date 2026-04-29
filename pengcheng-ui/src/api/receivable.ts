@@ -48,6 +48,31 @@ export interface ReceivableAlertRecord {
   createTime?: string
 }
 
+/** 逾期告警档位（与后端 OverdueAlertLevel 对应）*/
+export type OverdueAlertLevel = 'FIRST' | 'T3' | 'T7' | 'T15'
+
+export const OVERDUE_LEVEL_LABEL: Record<OverdueAlertLevel, string> = {
+  FIRST: '首次逾期',
+  T3: 'T+3 升级',
+  T7: 'T+7 升级',
+  T15: 'T+15 严重'
+}
+
+/**
+ * 由 notifyCount 推导当前档位：
+ *   notifyCount=1 → FIRST  (level 0)
+ *   notifyCount=2 → T3     (level 1)
+ *   notifyCount=3 → T7     (level 2)
+ *   notifyCount>=4 → T15   (level 3)
+ */
+export function levelFromNotifyCount(notifyCount?: number): OverdueAlertLevel | null {
+  if (!notifyCount || notifyCount < 1) return null
+  if (notifyCount >= 4) return 'T15'
+  if (notifyCount === 3) return 'T7'
+  if (notifyCount === 2) return 'T3'
+  return 'FIRST'
+}
+
 export interface ReceivableStatsRecord {
   totalDue: number
   totalPaid: number

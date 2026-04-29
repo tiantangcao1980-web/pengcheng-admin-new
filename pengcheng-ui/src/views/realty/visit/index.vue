@@ -46,17 +46,66 @@
     </n-card>
 
     <!-- 新建/编辑弹窗 -->
-    <n-modal v-model:show="showForm" preset="card" :title="formTitle" style="width: 650px">
-      <n-form ref="formRef" :model="form" label-placement="left" label-width="100px">
+    <n-modal v-model:show="showForm" preset="card" :title="formTitle" style="width: 720px">
+      <n-form ref="formRef" :model="form" label-placement="left" label-width="110px">
         <n-grid :cols="2" :x-gap="12">
-          <n-gi>
-            <n-form-item label="客户姓名" path="customerName">
-              <n-input v-model:value="form.customerName" placeholder="请输入客户姓名" />
+          <n-gi :span="2">
+            <n-form-item label="用户类型" path="userType">
+              <n-radio-group v-model:value="form.userType" @update:value="onUserTypeChange">
+                <n-radio v-for="opt in VISIT_USER_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio>
+              </n-radio-group>
+            </n-form-item>
+          </n-gi>
+          <n-gi :span="2">
+            <n-form-item :label="form.userType === VISIT_USER_TYPE_ALLIANCE ? '联盟商' : '开发商'" path="partnerId">
+              <n-select
+                v-if="form.userType === VISIT_USER_TYPE_ALLIANCE"
+                v-model:value="form.partnerId"
+                :options="allianceOptions"
+                label-field="companyName"
+                value-field="id"
+                filterable
+                clearable
+                remote
+                @search="handleAllianceSearch"
+                placeholder="请选择联盟商"
+              />
+              <!-- 开发商 V1.0 暂用 input；后端 partnerId 需要数字 ID，此处用 visitCompany 承载名称，partnerId 由后端按名称落库或后续补开发商列表 -->
+              <n-input
+                v-else
+                v-model:value="form.developerName"
+                placeholder="请输入开发商名称"
+              />
             </n-form-item>
           </n-gi>
           <n-gi>
-            <n-form-item label="项目名称" path="projectName">
-              <n-input v-model:value="form.projectName" placeholder="请输入项目名称" />
+            <n-form-item label="项目名称" path="projectId">
+              <n-select
+                v-model:value="form.projectId"
+                :options="projectOptions"
+                label-field="projectName"
+                value-field="id"
+                filterable
+                clearable
+                remote
+                @search="handleProjectSearch"
+                placeholder="请选择楼盘"
+              />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="带看公司" path="visitCompany">
+              <n-input v-model:value="form.visitCompany" placeholder="请输入带看公司" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="带看日期" path="visitDate">
+              <n-date-picker v-model:value="form.visitDate" type="date" clearable style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="带看时间" path="visitTimeOnly">
+              <n-time-picker v-model:value="form.visitTimeOnly" format="HH:mm" clearable style="width: 100%" />
             </n-form-item>
           </n-gi>
           <n-gi>
@@ -69,16 +118,11 @@
             </n-form-item>
           </n-gi>
           <n-gi>
-            <n-form-item label="拜访时间" path="visitTime">
-              <n-date-picker v-model:value="form.visitTime" type="datetime" style="width: 100%" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
             <n-form-item label="时长(分钟)" path="duration">
               <n-input-number v-model:value="form.duration" :min="1" style="width: 100%" />
             </n-form-item>
           </n-gi>
-          <n-gi>
+          <n-gi :span="2">
             <n-form-item label="拜访地点" path="location">
               <n-input v-model:value="form.location" placeholder="拜访地点" />
             </n-form-item>
@@ -161,6 +205,14 @@
 import { ref, computed, h, onMounted } from 'vue'
 import { NButton, NTag, NSpace, useMessage } from 'naive-ui'
 import { salesVisitApi } from '@/api/salesVisit'
+import {
+  realtyApi,
+  VISIT_USER_TYPE_ALLIANCE,
+  VISIT_USER_TYPE_DEVELOPER,
+  VISIT_USER_TYPE_OPTIONS,
+  type AllianceOption,
+  type ProjectOption
+} from '@/api/realty'
 
 const message = useMessage()
 const visits = ref<any[]>([])
@@ -175,6 +227,24 @@ const detailData = ref<any>(null)
 const formTitle = ref('新建拜访记录')
 const form = ref<any>({})
 const formRef = ref()
+
+const projectOptions = ref<ProjectOption[]>([])
+const allianceOptions = ref<AllianceOption[]>([])
+
+async function handleProjectSearch(keyword: string) {
+  projectOptions.value = await realtyApi.searchProjects(keyword || '')
+}
+async function handleAllianceSearch(keyword: string) {
+  allianceOptions.value = await realtyApi.searchAlliances(keyword || '')
+}
+function onUserTypeChange(value: number) {
+  // 切换用户类型时清空 partnerId/开发商名称，避免脏数据
+  form.value.partnerId = null
+  form.value.developerName = ''
+  if (value === VISIT_USER_TYPE_ALLIANCE && allianceOptions.value.length === 0) {
+    handleAllianceSearch('')
+  }
+}
 
 const fieldCount = computed(() => {
   const byType = stats.value.byType || []
@@ -263,21 +333,90 @@ function handlePageChange(page: number) {
 
 function openCreate() {
   formTitle.value = '新建拜访记录'
-  form.value = { visitType: 'field', duration: 30 }
+  form.value = {
+    userType: VISIT_USER_TYPE_ALLIANCE,
+    partnerId: null,
+    developerName: '',
+    projectId: null,
+    visitCompany: '',
+    visitDate: Date.now(),
+    visitTimeOnly: null,
+    visitType: 'field',
+    duration: 30,
+    location: ''
+  }
+  // 默认拉取联盟商和项目列表
+  handleAllianceSearch('')
+  handleProjectSearch('')
   showForm.value = true
 }
 
 function openEdit(row: any) {
   formTitle.value = '编辑拜访记录'
-  form.value = { ...row, visitTime: row.visitTime ? new Date(row.visitTime).getTime() : null }
+  form.value = {
+    ...row,
+    userType: row.userType ?? VISIT_USER_TYPE_ALLIANCE,
+    partnerId: row.partnerId ?? null,
+    projectId: row.projectId ?? null,
+    visitDate: row.visitDate ? new Date(row.visitDate).getTime() : (row.visitTime ? new Date(row.visitTime).getTime() : null),
+    visitTimeOnly: row.visitTimeOnly ? toMillisFromTime(row.visitTimeOnly) : null,
+    visitTime: row.visitTime ? new Date(row.visitTime).getTime() : null
+  }
+  handleAllianceSearch('')
+  handleProjectSearch('')
   showForm.value = true
 }
 
+// 把 HH:mm[:ss] 转成 NTimePicker 需要的毫秒（基于今天 00:00）
+function toMillisFromTime(hms: string): number | null {
+  const parts = hms.split(':').map(p => Number(p))
+  if (!parts.length || parts.some(Number.isNaN)) return null
+  const d = new Date()
+  d.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0)
+  return d.getTime()
+}
+
+function fromMillisToHm(ms: number | null | undefined): string | null {
+  if (!ms) return null
+  const d = new Date(ms)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function fromMillisToYmd(ms: number | null | undefined): string | null {
+  if (!ms) return null
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 async function handleSubmit() {
-  const data = {
-    ...form.value,
-    visitTime: form.value.visitTime ? new Date(form.value.visitTime).toISOString() : null
+  // 拼装新结构：visitDate（必填）+ visitTimeOnly（选填），合并成 ISO 给 salesVisit 旧接口的 visitTime 兼容字段
+  const visitDate = fromMillisToYmd(form.value.visitDate)
+  const visitTimeOnly = fromMillisToHm(form.value.visitTimeOnly)
+  if (!visitDate) {
+    return message.warning('请选择带看日期')
   }
+  if (form.value.userType === VISIT_USER_TYPE_ALLIANCE && !form.value.partnerId) {
+    return message.warning('请选择联盟商')
+  }
+  if (form.value.userType === VISIT_USER_TYPE_DEVELOPER && !form.value.developerName) {
+    return message.warning('请输入开发商名称')
+  }
+
+  // 兼容旧 salesVisit API：visitTime 仍按 ISO 提交，便于列表展示；新字段并行提交，待后端接管
+  const visitTimeIso = new Date(`${visitDate}T${visitTimeOnly || '00:00'}:00`).toISOString()
+
+  const data: any = {
+    ...form.value,
+    visitDate,
+    visitTimeOnly,
+    visitTime: visitTimeIso,
+    // partnerId/visitCompany/userType 即 V17 后端字段
+    userType: form.value.userType,
+    partnerId: form.value.partnerId,
+    visitCompany: form.value.visitCompany || form.value.developerName || ''
+  }
+  // 移除前端临时字段
+  delete data.developerName
   try {
     if (data.id) {
       await salesVisitApi.update(data)

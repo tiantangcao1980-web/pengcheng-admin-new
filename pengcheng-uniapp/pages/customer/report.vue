@@ -18,8 +18,18 @@
 					<input class="form-input" v-model="form.customerName" placeholder="请输入客户姓氏" />
 				</view>
 				<view class="form-item">
+					<text class="form-label">性别</text>
+					<picker :range="genderList" range-key="label" @change="onGenderChange">
+						<view class="picker-value">
+							<text :class="{ placeholder: !selectedGenderLabel }">{{ selectedGenderLabel || '请选择性别' }}</text>
+							<u-icon name="arrow-right" color="#CCC" size="14"></u-icon>
+						</view>
+					</picker>
+				</view>
+				<view class="form-item">
 					<text class="form-label">联系方式 <text class="required">*</text></text>
 					<input class="form-input" v-model="form.phone" type="number" placeholder="请输入联系电话" maxlength="11" />
+					<text class="form-tip">将自动脱敏前 3 后 4</text>
 				</view>
 				<view class="form-item">
 					<text class="form-label">带看人数</text>
@@ -73,6 +83,7 @@
 				form: {
 					projectIds: [],
 					customerName: '',
+					gender: '',
 					phone: '',
 					visitCount: '',
 					visitTime: '',
@@ -86,6 +97,12 @@
 				allianceKeyword: '',
 				selectedProjectName: '',
 				selectedAllianceName: '',
+				selectedGenderLabel: '',
+				genderList: [
+					{ label: '男', value: 'M' },
+					{ label: '女', value: 'F' },
+					{ label: '其他', value: 'O' }
+				],
 				submitting: false
 			}
 		},
@@ -122,6 +139,14 @@
 					this.selectedAllianceName = item.companyName
 				}
 			},
+			onGenderChange(e) {
+				const idx = e.detail.value
+				const item = this.genderList[idx]
+				if (item) {
+					this.form.gender = item.value
+					this.selectedGenderLabel = item.label
+				}
+			},
 			onDateChange(e) {
 				this.form.visitTime = e.detail.value
 			},
@@ -145,6 +170,7 @@
 					const res = await reportCustomer({
 						projectIds: this.form.projectIds,
 						customerName: this.form.customerName.trim(),
+						gender: this.form.gender || undefined,
 						phone: this.form.phone.trim(),
 						visitCount: Number(this.form.visitCount || 1),
 						visitTime: this.form.visitTime.replace(' ', 'T'),
@@ -187,6 +213,7 @@
 		border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 16rpx;
 	}
 	.form-search { margin-bottom: 12rpx; }
+	.form-tip { font-size: 22rpx; color: #999; margin-top: 8rpx; display: block; }
 	.picker-value {
 		height: 72rpx; display: flex; align-items: center; justify-content: space-between;
 		border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 16rpx;

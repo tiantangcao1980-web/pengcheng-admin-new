@@ -27,6 +27,20 @@ public class ProjectCommissionRule extends BaseEntity {
     private Long projectId;
 
     /**
+     * 物业类型（V17 新增 — 与 Commission.propertyType 同值）
+     * 取值：RESIDENTIAL/COMMERCIAL/APARTMENT/OFFICE/OTHER；默认 RESIDENTIAL
+     * 同一楼盘可有多条规则按物业类型区分
+     */
+    private String propertyType;
+
+    /**
+     * 客户籍贯（V17 新增 — 与 Commission.customerOrigin 同值）
+     * 取值：DOMESTIC内地 / OVERSEAS境外；默认 DOMESTIC
+     * 内地/境外客户佣金率往往不同
+     */
+    private String customerOrigin;
+
+    /**
      * 基础佣金比例
      */
     private BigDecimal baseRate;

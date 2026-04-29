@@ -42,6 +42,21 @@ public class AiProperties {
     /** AI 对话接口超时时间（秒） */
     private int chatTimeoutSeconds = 30;
 
+    /**
+     * LLM Provider 选择：dashscope / ollama / auto（默认）
+     * auto = 第一个可用 Provider（按 Spring Bean 加载顺序）
+     */
+    private String provider = "auto";
+
+    /** Ollama 本地服务地址（私有化部署用） */
+    private String ollamaBaseUrl = "http://localhost:11434";
+
+    /** Ollama 默认模型名 */
+    private String ollamaModel = "qwen2:7b";
+
+    /** Ollama 调用超时（秒） */
+    private int ollamaTimeoutSeconds = 60;
+
     /** 路由模式：rule(规则), agent(AI), hybrid(AI优先失败回退规则) */
     private String routeMode = "rule";
 

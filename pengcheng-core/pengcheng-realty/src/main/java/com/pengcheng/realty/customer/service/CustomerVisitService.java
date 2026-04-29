@@ -50,13 +50,23 @@ public class CustomerVisitService {
             throw new InvalidStateTransitionException("客户当前状态不允许录入到访数据，需要先完成客户报备");
         }
 
-        // 创建到访记录
+        // 创建到访记录（V17：含 visitDate / visitTimeOnly / visitCompany / userType / partnerId）
+        // 兼容性：visitDate 缺失时从 actualVisitTime 自动抽取
+        java.time.LocalDate visitDate = dto.getVisitDate();
+        if (visitDate == null && dto.getActualVisitTime() != null) {
+            visitDate = dto.getActualVisitTime().toLocalDate();
+        }
         CustomerVisit visit = CustomerVisit.builder()
                 .customerId(dto.getCustomerId())
                 .actualVisitTime(dto.getActualVisitTime())
                 .actualVisitCount(dto.getActualVisitCount())
                 .receptionist(dto.getReceptionist())
                 .remark(dto.getRemark())
+                .visitDate(visitDate)
+                .visitTimeOnly(dto.getVisitTimeOnly())
+                .visitCompany(dto.getVisitCompany())
+                .userType(dto.getUserType())
+                .partnerId(dto.getPartnerId())
                 .build();
         customerVisitMapper.insert(visit);
 

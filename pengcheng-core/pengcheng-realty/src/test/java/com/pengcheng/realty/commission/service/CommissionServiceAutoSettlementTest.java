@@ -4,6 +4,7 @@ import com.pengcheng.common.event.DataChangeEvent;
 import com.pengcheng.realty.commission.dto.CommissionDetailDTO;
 import com.pengcheng.realty.commission.entity.Commission;
 import com.pengcheng.realty.commission.entity.CommissionDetail;
+import com.pengcheng.realty.commission.mapper.CommissionApprovalMapper;
 import com.pengcheng.realty.commission.mapper.CommissionChangeLogMapper;
 import com.pengcheng.realty.commission.mapper.CommissionDetailMapper;
 import com.pengcheng.realty.commission.mapper.CommissionMapper;
@@ -39,6 +40,7 @@ class CommissionServiceAutoSettlementTest {
     private CommissionMapper commissionMapper;
     private CommissionDetailMapper commissionDetailMapper;
     private CommissionChangeLogMapper commissionChangeLogMapper;
+    private CommissionApprovalMapper commissionApprovalMapper;
     private CustomerDealMapper customerDealMapper;
     private RealtyCustomerMapper customerMapper;
     private CustomerProjectMapper customerProjectMapper;
@@ -52,6 +54,7 @@ class CommissionServiceAutoSettlementTest {
         commissionMapper = mock(CommissionMapper.class);
         commissionDetailMapper = mock(CommissionDetailMapper.class);
         commissionChangeLogMapper = mock(CommissionChangeLogMapper.class);
+        commissionApprovalMapper = mock(CommissionApprovalMapper.class);
         customerDealMapper = mock(CustomerDealMapper.class);
         customerMapper = mock(RealtyCustomerMapper.class);
         customerProjectMapper = mock(CustomerProjectMapper.class);
@@ -63,6 +66,7 @@ class CommissionServiceAutoSettlementTest {
                 commissionMapper,
                 commissionDetailMapper,
                 commissionChangeLogMapper,
+                commissionApprovalMapper,
                 customerDealMapper,
                 customerMapper,
                 customerProjectMapper,

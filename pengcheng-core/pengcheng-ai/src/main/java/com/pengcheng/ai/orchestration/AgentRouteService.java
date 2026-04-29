@@ -30,6 +30,9 @@ public class AgentRouteService {
         if (containsAny(text, "客户", "报备", "手机号", "公海", "私海", "成交概率", "判客")) {
             return AgentIntent.CUSTOMER;
         }
+        if (containsAny(text, "楼盘", "户型", "开盘", "认筹", "签约", "回款", "佣金", "商机")) {
+            return AgentIntent.REALTY;
+        }
         if (containsAny(text, "报表", "统计", "排行", "业绩", "漏斗", "转化", "成交", "报备", "到访", "本月", "本周", "今日")) {
             return AgentIntent.REPORT;
         }

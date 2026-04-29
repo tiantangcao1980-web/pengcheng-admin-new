@@ -105,7 +105,7 @@ const message = useMessage()
 
 const currentChatId = ref(1)
 const currentModel = ref('qwen-max')
-const currentAgent = ref('sales_assistant')
+const currentAgent = ref('realty')  // 默认房产助手（与本系统业务定位一致）
 const input = ref('')
 const loading = ref(false)
 const scrollRef = ref<HTMLElement>()
@@ -118,10 +118,16 @@ const modelOptions = [
   { label: '通义千问 Plus', value: 'qwen-plus' }
 ]
 
+// Agent 选项映射后端 AgentIntent 枚举（pengcheng-ai/orchestration/AgentIntent.java）
+// 当前为 UI 提示，实际路由仍由后端 AgentRouteService 按消息关键词决定
+// V1.0 收尾：后端 ChatRequest 加 intent 字段，前端可强制覆盖路由
 const agentOptions = [
-  { label: '通用助手', value: 'general' },
-  { label: '销售专家', value: 'sales_assistant' },
-  { label: '数据分析师', value: 'data_analyst' }
+  { label: '🤖 智能路由', value: 'general' },
+  { label: '🏠 房产助手', value: 'realty' },
+  { label: '👥 客户专家', value: 'customer' },
+  { label: '📊 报表分析', value: 'report' },
+  { label: '📚 知识库问答', value: 'knowledge' },
+  { label: '✍️ 文案助手', value: 'copywriting' }
 ]
 
 const history = ref<{ id: number; title: string }[]>([])

@@ -75,4 +75,24 @@ public class Project extends BaseEntity {
      * 项目介绍
      */
     private String description;
+
+    /**
+     * 到访保护期（天，V17 新增；常用 7/15/30；默认 15）
+     */
+    private Integer protectPeriodDays;
+
+    /**
+     * 交楼时间（V17 新增）
+     */
+    private LocalDate deliveryDate;
+
+    /**
+     * 交付标准描述（毛坯/精装/拎包入住等，V17 新增）
+     */
+    private String deliveryStandard;
+
+    /**
+     * 赠送物品描述（V17 新增）
+     */
+    private String giftItems;
 }
