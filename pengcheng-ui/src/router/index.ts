@@ -206,6 +206,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '云文档', icon: 'DocumentTextOutline' }
       },
       {
+        // OnlyOffice 在线编辑器（全屏独立页）
+        path: 'doc/:docId/onlyoffice',
+        name: 'DocOnlyOffice',
+        component: () => import('@/views/doc/onlyoffice/index.vue'),
+        meta: { title: 'OnlyOffice 在线编辑', hideInMenu: true }
+      },
+      {
         path: 'smart-table',
         name: 'SmartTable',
         component: () => import('@/views/smarttable/index.vue'),
@@ -216,6 +223,18 @@ const routes: RouteRecordRaw[] = [
         name: 'SmartTableTemplates',
         component: () => import('@/views/smarttable/templates.vue'),
         meta: { title: '表格模板管理', icon: 'CopyOutline' }
+      },
+      {
+        path: 'smart-table/market',
+        name: 'SmartTableMarket',
+        component: () => import('@/views/smarttable/market/index.vue'),
+        meta: { title: '模板市场', icon: 'StorefrontOutline' }
+      },
+      {
+        path: 'smart-table/market/review',
+        name: 'SmartTableMarketReview',
+        component: () => import('@/views/smarttable/market/components/ReviewPanel.vue'),
+        meta: { title: '模板审核', icon: 'ShieldCheckmarkOutline', roles: ['admin'] }
       },
       {
         path: 'todo',
