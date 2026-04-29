@@ -3,10 +3,6 @@ package com.pengcheng.system.meeting.minutes.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pengcheng.ai.asr.AsrRequest;
-import com.pengcheng.ai.asr.AsrResponse;
-import com.pengcheng.ai.asr.AsrService;
-import com.pengcheng.ai.service.AiChatService;
 import com.pengcheng.system.meeting.minutes.entity.MeetingActionItem;
 import com.pengcheng.system.meeting.minutes.entity.MeetingMinutesAi;
 import com.pengcheng.system.meeting.minutes.mapper.MeetingActionItemMapper;
@@ -17,27 +13,26 @@ import com.pengcheng.system.todo.service.TodoService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * AI 纪要服务实现（Phase 4 J5）
+ * AI 纪要服务实现（Phase 4 J5）。
  *
- * <p>异步状态机：
- * <pre>
- * requestProcess() → 置 PENDING → 异步触发 processAsync()
- *   processAsync():
- *     1. TRANSCRIBING: 调 AsrService.transcribe → 写 transcript
- *     2. SUMMARIZING: 调 AiChatService.chat → 解析 JSON {summary, actionItems}
- *     3. 持久化摘要 + 行动项 → 对每个行动项调 TodoService.create → 回填 todo_id
- *     4. status = READY
- *   任何步骤异常 → status = FAILED + error_msg（不影响其他纪要）
- * </pre>
+ * <p><b>跨模块解耦</b>：AsrService / AiChatService 在 pengcheng-ai 模块，
+ * pengcheng-system 不能反向依赖（会与 ai → system 形成循环）。
+ * 通过 ApplicationContext 反射软依赖：
+ * <ul>
+ *   <li>classpath 含 pengcheng-ai 时正常调用</li>
+ *   <li>缺失时降级为只入库 transcript/summary 为空 + status=READY，留 TODO</li>
+ * </ul>
+ *
+ * <p>异步状态机：PENDING → TRANSCRIBING → SUMMARIZING → READY/FAILED
  */
 @Slf4j
 @Service
@@ -58,15 +53,13 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
 
     private final MeetingMinutesAiMapper minutesAiMapper;
     private final MeetingActionItemMapper actionItemMapper;
-    private final AsrService asrService;
-    private final AiChatService aiChatService;
     private final TodoService todoService;
     private final ObjectMapper objectMapper;
+    private final ApplicationContext applicationContext;
 
     @Override
     @Transactional
     public MeetingMinutesAi requestProcess(Long bookingId, String audioUrl) {
-        // 幂等：已存在则重置
         MeetingMinutesAi existing = getByBookingId(bookingId);
         if (existing != null) {
             existing.setAudioUrl(audioUrl);
@@ -96,24 +89,16 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
             return;
         }
         try {
-            // Step 1: ASR 转写
+            // Step 1: ASR 转写（软依赖）
             minutes.setStatus(TRANSCRIBING);
             minutesAiMapper.updateById(minutes);
-
-            AsrRequest asrRequest = new AsrRequest();
-            asrRequest.setAudioUrl(minutes.getAudioUrl());
-            asrRequest.setLanguage("zh");
-            AsrResponse asrResponse = asrService.transcribe(asrRequest);
-            String transcript = asrResponse.getTranscript();
+            String transcript = invokeAsrTranscribe(minutes.getAudioUrl());
             minutes.setTranscript(transcript);
 
-            // Step 2: LLM 摘要 + 行动项提取
+            // Step 2: LLM 摘要（软依赖）
             minutes.setStatus(SUMMARIZING);
             minutesAiMapper.updateById(minutes);
-
-            String prompt = SUMMARY_PROMPT_TEMPLATE + transcript;
-            AiChatService.ChatResult chatResult = aiChatService.chat(prompt);
-            SummaryResult summaryResult = parseSummaryResult(chatResult.content());
+            SummaryResult summaryResult = invokeAiSummarize(transcript);
 
             // Step 3: 持久化摘要
             minutes.setSummary(summaryResult.getSummary());
@@ -142,8 +127,7 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
     public MeetingMinutesAi getByBookingId(Long bookingId) {
         return minutesAiMapper.selectOne(
                 new LambdaQueryWrapper<MeetingMinutesAi>()
-                        .eq(MeetingMinutesAi::getBookingId, bookingId)
-        );
+                        .eq(MeetingMinutesAi::getBookingId, bookingId));
     }
 
     @Override
@@ -151,30 +135,61 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
         return actionItemMapper.selectList(
                 new LambdaQueryWrapper<MeetingActionItem>()
                         .eq(MeetingActionItem::getBookingId, bookingId)
-                        .orderByAsc(MeetingActionItem::getCreateTime)
-        );
+                        .orderByAsc(MeetingActionItem::getCreateTime));
     }
 
     @Override
     @Transactional
     public void completeActionItem(Long actionItemId) {
         MeetingActionItem item = actionItemMapper.selectById(actionItemId);
-        if (item == null) {
-            return;
-        }
+        if (item == null) return;
         item.setStatus(1);
         actionItemMapper.updateById(item);
-        // 同步更新关联 Todo（如已创建）
         if (item.getTodoId() != null && item.getOwnerId() != null) {
             todoService.completeTodo(item.getTodoId(), item.getOwnerId());
         }
     }
 
-    // ---- 私有方法 ----
+    /* ===== 跨模块软依赖（反射调 pengcheng-ai） ===== */
 
-    /**
-     * 为每个 actionItem 创建 meeting_action_item 记录并关联 sys_todo
-     */
+    private String invokeAsrTranscribe(String audioUrl) {
+        try {
+            Class<?> reqClass = Class.forName("com.pengcheng.ai.asr.AsrRequest");
+            Class<?> respClass = Class.forName("com.pengcheng.ai.asr.AsrResponse");
+            Class<?> svcClass = Class.forName("com.pengcheng.ai.asr.AsrService");
+            Object svc = applicationContext.getBean(svcClass);
+            Object req = reqClass.getConstructor().newInstance();
+            reqClass.getMethod("setAudioUrl", String.class).invoke(req, audioUrl);
+            reqClass.getMethod("setLanguage", String.class).invoke(req, "zh");
+            Object resp = svcClass.getMethod("transcribe", reqClass).invoke(svc, req);
+            return (String) respClass.getMethod("getTranscript").invoke(resp);
+        } catch (Throwable e) {
+            log.warn("[AI纪要] AsrService 不可用（pengcheng-ai 未在 classpath 或未启用），降级为空 transcript: {}",
+                    e.getMessage());
+            return "[ASR 服务未启用，转写降级 — TODO 启用 pengcheng-ai 模块]";
+        }
+    }
+
+    private SummaryResult invokeAiSummarize(String transcript) {
+        try {
+            Class<?> svcClass = Class.forName("com.pengcheng.ai.service.AiChatService");
+            Class<?> resultClass = Class.forName("com.pengcheng.ai.service.AiChatService$ChatResult");
+            Object svc = applicationContext.getBean(svcClass);
+            String prompt = SUMMARY_PROMPT_TEMPLATE + transcript;
+            Object chatResult = svcClass.getMethod("chat", String.class).invoke(svc, prompt);
+            String content = (String) resultClass.getMethod("content").invoke(chatResult);
+            return parseSummaryResult(content);
+        } catch (Throwable e) {
+            log.warn("[AI纪要] AiChatService 不可用，降级为占位摘要: {}", e.getMessage());
+            SummaryResult fallback = new SummaryResult();
+            fallback.setSummary("[AI 摘要服务未启用 — TODO 启用 pengcheng-ai 模块。原始转写见 transcript 字段。]");
+            fallback.setActionItems(Collections.emptyList());
+            return fallback;
+        }
+    }
+
+    /* ===== 私有方法 ===== */
+
     private void createActionItem(MeetingMinutesAi minutes, SummaryResult.ActionItemDTO dto) {
         try {
             MeetingActionItem item = new MeetingActionItem();
@@ -191,7 +206,6 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
             }
             actionItemMapper.insert(item);
 
-            // 创建 sys_todo 并回填 todo_id
             Todo todo = new Todo();
             todo.setTitle(dto.getContent());
             todo.setDescription("来自会议 AI 纪要（预订 id=" + minutes.getBookingId() + "）");
@@ -211,14 +225,10 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
         }
     }
 
-    /**
-     * 解析 LLM 返回的 JSON；解析失败则返回空结果（不抛出，由外层捕获整体 FAILED）
-     */
     private SummaryResult parseSummaryResult(String content) {
         if (content == null || content.isBlank()) {
             throw new IllegalStateException("LLM 返回内容为空");
         }
-        // 提取第一个 JSON 块（LLM 可能在 JSON 前后附带说明）
         int start = content.indexOf('{');
         int end = content.lastIndexOf('}');
         if (start < 0 || end < 0 || end <= start) {
@@ -236,8 +246,6 @@ public class MeetingMinutesAiServiceImpl implements MeetingMinutesAiService {
         if (s == null) return null;
         return s.length() <= max ? s : s.substring(0, max);
     }
-
-    // ---- 内部 DTO ----
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)

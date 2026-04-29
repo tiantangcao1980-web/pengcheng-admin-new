@@ -1,4 +1,4 @@
-package com.pengcheng.system.dashboard.cards.general;
+package com.pengcheng.realty.dashboard.cards.general;
 
 import com.pengcheng.system.dashboard.spi.DashboardCardProvider;
 import com.pengcheng.system.todo.mapper.TodoMapper;

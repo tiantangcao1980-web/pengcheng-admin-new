@@ -39,7 +39,8 @@ public class QrcodeSender implements InviteChannelSender {
         String inviteCode = invite.getInviteCode();
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            QrCodeUtil.generate(inviteCode, QrConfig.of(QR_SIZE, QR_SIZE), "png", baos);
+            QrConfig config = new QrConfig(QR_SIZE, QR_SIZE);
+            QrCodeUtil.generate(inviteCode, config, "png", baos);
             String fileName = inviteCode + ".png";
             String url = fileStorage.upload(new ByteArrayInputStream(baos.toByteArray()), QR_PATH_PREFIX, fileName);
             invite.setQrcodeUrl(url);

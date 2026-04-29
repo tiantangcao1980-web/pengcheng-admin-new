@@ -1,4 +1,4 @@
-package com.pengcheng.system.dashboard.cards.finance;
+package com.pengcheng.realty.dashboard.cards.finance;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pengcheng.realty.commission.entity.Commission;

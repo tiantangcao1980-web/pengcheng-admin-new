@@ -34,6 +34,16 @@
             <artifactId>pengcheng-message</artifactId>
         </dependency>
 
+        <!-- K3 带看 SOP 复用 H4 e签宝 (finance 模块) -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-finance</artifactId>
+        </dependency>
+        <!-- K5 行业字段模板 集成 D3 自定义字段 (crm 模块) -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-crm</artifactId>
+        </dependency>
         <!-- 基础设施层 -->
         <dependency>
             <groupId>com.pengcheng</groupId>

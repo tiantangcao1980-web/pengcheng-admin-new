@@ -1,4 +1,4 @@
-package com.pengcheng.system.dashboard.cards.team;
+package com.pengcheng.realty.dashboard.cards.team;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pengcheng.hr.performance.entity.KpiScore;

@@ -41,7 +41,7 @@ public class WechatMpSubscribeSender implements ChannelSubscribeSender {
         this.httpClient = httpClient;
     }
 
-    @Override
+    /** 渠道编码（非接口方法 — ChannelSubscribeSender 接口未约束）。 */
     public String channelCode() {
         return CHANNEL_CODE;
     }

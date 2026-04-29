@@ -1,4 +1,4 @@
-package com.pengcheng.system.dashboard.cards.sales;
+package com.pengcheng.realty.dashboard.cards.sales;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pengcheng.system.dashboard.spi.DashboardCardProvider;

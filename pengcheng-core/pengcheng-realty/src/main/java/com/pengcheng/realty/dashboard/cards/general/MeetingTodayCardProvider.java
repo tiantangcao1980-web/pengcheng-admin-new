@@ -1,4 +1,4 @@
-package com.pengcheng.system.dashboard.cards.general;
+package com.pengcheng.realty.dashboard.cards.general;
 
 import com.pengcheng.system.calendar.entity.CalendarEvent;
 import com.pengcheng.system.calendar.mapper.CalendarEventMapper;

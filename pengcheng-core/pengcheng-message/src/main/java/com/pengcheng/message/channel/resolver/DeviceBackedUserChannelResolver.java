@@ -1,5 +1,7 @@
 package com.pengcheng.message.channel.resolver;
 
+import com.pengcheng.message.channel.UserChannelProfile;
+import com.pengcheng.message.channel.UserChannelResolver;
 import com.pengcheng.message.subscribe.auth.MpUserSubscribe;
 import com.pengcheng.message.subscribe.auth.MpUserSubscribeService;
 import com.pengcheng.system.device.entity.UserLoginDevice;

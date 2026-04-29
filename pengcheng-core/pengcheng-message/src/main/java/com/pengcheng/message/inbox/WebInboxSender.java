@@ -30,35 +30,42 @@ public class WebInboxSender implements ChannelInboxSender {
      */
     private final InboxWebSocketBridge webSocketBridge;
 
-    @Override
+    /** 渠道编码（非接口方法 — ChannelInboxSender 接口未约束）。 */
     public String channelCode() {
         return CHANNEL_CODE;
     }
 
     @Override
-    public boolean send(Long userId, String title, String content, String bizType, Long bizId) {
+    public boolean send(String userId, String title, String content, String bizType, Long bizId) {
         // 1. 落库
+        Long uid;
+        try {
+            uid = Long.parseLong(userId);
+        } catch (Exception e) {
+            log.warn("[Inbox] userId 非法: {}", userId);
+            return false;
+        }
         try {
             Notification notification = Notification.builder()
-                    .userId(userId)
+                    .userId(uid)
                     .title(title)
                     .content(content)
                     .bizType(bizType)
                     .bizId(bizId)
                     .build();
             notificationService.createNotification(notification);
-            log.debug("[Inbox] 站内信落库成功: userId={}, title={}", userId, title);
+            log.debug("[Inbox] 站内信落库成功: userId={}, title={}", uid, title);
         } catch (Exception e) {
-            log.error("[Inbox] 站内信落库失败: userId={}, title={}, error={}", userId, title, e.getMessage(), e);
+            log.error("[Inbox] 站内信落库失败: userId={}, title={}, error={}", uid, title, e.getMessage(), e);
             return false;
         }
 
         // 2. 在线推送（fire-and-forget，不影响落库结果）
         if (webSocketBridge != null) {
             try {
-                webSocketBridge.sendNoticeIfOnline(userId, title, content);
+                webSocketBridge.sendNoticeIfOnline(uid, title, content);
             } catch (Exception e) {
-                log.warn("[Inbox] WebSocket 推送失败（已忽略）: userId={}, error={}", userId, e.getMessage());
+                log.warn("[Inbox] WebSocket 推送失败（已忽略）: userId={}, error={}", uid, e.getMessage());
             }
         }
 

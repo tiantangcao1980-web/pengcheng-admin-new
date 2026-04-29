@@ -1,14 +1,13 @@
 package com.pengcheng.system.doc.collab.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pengcheng.message.entity.Notification;
-import com.pengcheng.message.service.NotificationService;
 import com.pengcheng.system.doc.collab.dto.CommentCreateDTO;
 import com.pengcheng.system.doc.collab.entity.DocComment;
 import com.pengcheng.system.doc.collab.mapper.DocCommentMapper;
 import com.pengcheng.system.doc.collab.service.DocCommentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,11 @@ import java.util.stream.Collectors;
 public class DocCommentServiceImpl implements DocCommentService {
 
     private final DocCommentMapper commentMapper;
-    private final NotificationService notificationService;
+    /**
+     * NotificationService 在 pengcheng-message 模块（system 不能反向依赖以避免循环）。
+     * 用 ApplicationContext 软依赖：缺失时降级为 WARN 日志，不阻断主链路。
+     */
+    private final ApplicationContext applicationContext;
 
     /** 匹配 content 中 @{123} 格式的 userId */
     private static final Pattern AT_PATTERN = Pattern.compile("@\\{(\\d+)}");
@@ -138,26 +141,43 @@ public class DocCommentServiceImpl implements DocCommentService {
     }
 
     /**
-     * 向被 @ 的用户发送系统通知
+     * 向被 @ 的用户发送系统通知（通过反射软依赖 NotificationService，避免循环依赖）。
      */
     private void sendMentionNotifications(Set<Long> mentionIds, Long fromUserId,
                                           String fromUserName, Long docId, Long commentId) {
+        Object notificationService;
+        try {
+            // pengcheng-message 在 classpath 时通过 className 拿 Bean
+            Class<?> svcClass = Class.forName("com.pengcheng.message.service.NotificationService");
+            notificationService = applicationContext.getBean(svcClass);
+        } catch (Throwable e) {
+            log.warn("[DocComment] NotificationService 不在 classpath 或未注入，@ 通知降级（仅日志）: mentions={}",
+                    mentionIds);
+            return;
+        }
         for (Long targetUserId : mentionIds) {
-            if (targetUserId.equals(fromUserId)) continue; // 不通知自己
+            if (targetUserId.equals(fromUserId)) continue;
             try {
-                Notification n = Notification.builder()
-                        .userId(targetUserId)
-                        .title("文档评论 @ 提醒")
-                        .content(fromUserName + " 在文档中 @ 了你")
-                        .type(4) // 文档 @ 通知（新增类型）
-                        .bizType("doc_comment")
-                        .bizId(commentId)
-                        .readStatus(0)
-                        .createTime(LocalDateTime.now())
-                        .build();
-                notificationService.createNotification(n);
+                // 反射构造 Notification + 调 createNotification
+                Class<?> notifClass = Class.forName("com.pengcheng.message.entity.Notification");
+                Object builder = notifClass.getMethod("builder").invoke(null);
+                Class<?> builderClass = builder.getClass();
+                builder = builderClass.getMethod("userId", Long.class).invoke(builder, targetUserId);
+                builder = builderClass.getMethod("title", String.class).invoke(builder, "文档评论 @ 提醒");
+                builder = builderClass.getMethod("content", String.class).invoke(builder,
+                        fromUserName + " 在文档中 @ 了你");
+                builder = builderClass.getMethod("type", Integer.class).invoke(builder, 4);
+                builder = builderClass.getMethod("bizType", String.class).invoke(builder, "doc_comment");
+                builder = builderClass.getMethod("bizId", Long.class).invoke(builder, commentId);
+                builder = builderClass.getMethod("readStatus", Integer.class).invoke(builder, 0);
+                builder = builderClass.getMethod("createTime", LocalDateTime.class)
+                        .invoke(builder, LocalDateTime.now());
+                Object n = builderClass.getMethod("build").invoke(builder);
+                notificationService.getClass()
+                        .getMethod("createNotification", notifClass)
+                        .invoke(notificationService, n);
             } catch (Exception e) {
-                log.warn("[DocComment] 发送 @ 通知失败 targetUserId={}", targetUserId, e);
+                log.warn("[DocComment] 发送 @ 通知失败 targetUserId={}: {}", targetUserId, e.getMessage());
             }
         }
     }

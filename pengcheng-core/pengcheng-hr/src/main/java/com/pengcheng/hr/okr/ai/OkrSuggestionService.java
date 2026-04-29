@@ -1,8 +1,8 @@
 package com.pengcheng.hr.okr.ai;
 
-import com.pengcheng.ai.service.AiChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -12,11 +12,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * OKR AI 辅助拆解服务
- * <p>
- * 根据目标标题和描述，调用 AiChatService 生成 3-5 个 Key Result 建议。
- * 若 AI 调用失败，fallback 返回空列表 + WARN 日志，不阻断业务。
- * </p>
+ * OKR AI 辅助拆解服务。
+ *
+ * <p>根据目标标题和描述，调用 AiChatService（pengcheng-ai 模块）生成 3-5 个 Key Result 建议。
+ *
+ * <p><b>跨模块解耦</b>：pengcheng-hr 不能直接依赖 pengcheng-ai（ai → realty → hr 会循环），
+ * 通过 ApplicationContext 反射软依赖。AI 模块缺失时 fallback 返回空列表 + WARN 日志，不阻断业务。
  */
 @Slf4j
 @Service
@@ -29,15 +30,11 @@ public class OkrSuggestionService {
             + "目标标题：%s\n"
             + "目标描述：%s";
 
-    private final AiChatService aiChatService;
+    private final ApplicationContext applicationContext;
 
     /**
      * 根据目标标题和描述，返回 AI 建议的 KR 列表（3-5 条）。
      * 调用失败时返回空列表，业务层应将此视为「无建议」而非异常。
-     *
-     * @param objectiveTitle       目标标题
-     * @param objectiveDescription 目标描述（可为 null）
-     * @return KR 建议文本列表
      */
     public List<String> suggestKeyResults(String objectiveTitle, String objectiveDescription) {
         if (!StringUtils.hasText(objectiveTitle)) {
@@ -45,19 +42,24 @@ public class OkrSuggestionService {
         }
         String desc = StringUtils.hasText(objectiveDescription) ? objectiveDescription : "（无描述）";
         String prompt = String.format(PROMPT_TEMPLATE, objectiveTitle, desc);
+
         try {
-            // TODO: 替换为更轻量的 AI 调用（如专用的 KR 生成 prompt pipeline）
-            AiChatService.ChatResult result = aiChatService.chat(prompt);
-            if (result == null || !StringUtils.hasText(result.content())) {
-                return Collections.emptyList();
-            }
-            return Arrays.stream(result.content().split("\n"))
+            // 反射软依赖 AiChatService（pengcheng-ai 模块；不在 classpath 时降级）
+            Class<?> svcClass = Class.forName("com.pengcheng.ai.service.AiChatService");
+            Class<?> resultClass = Class.forName("com.pengcheng.ai.service.AiChatService$ChatResult");
+            Object svc = applicationContext.getBean(svcClass);
+            Object result = svcClass.getMethod("chat", String.class).invoke(svc, prompt);
+            if (result == null) return Collections.emptyList();
+            String content = (String) resultClass.getMethod("content").invoke(result);
+            if (!StringUtils.hasText(content)) return Collections.emptyList();
+            return Arrays.stream(content.split("\n"))
                     .map(String::trim)
                     .filter(StringUtils::hasText)
                     .limit(5)
                     .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("[OkrSuggestion] AI 建议 KR 失败，objective={}, reason={}", objectiveTitle, e.getMessage());
+        } catch (Throwable e) {
+            log.warn("[OkrSuggestion] AI 建议 KR 失败，objective={}, reason={}",
+                    objectiveTitle, e.getMessage());
             return Collections.emptyList();
         }
     }
