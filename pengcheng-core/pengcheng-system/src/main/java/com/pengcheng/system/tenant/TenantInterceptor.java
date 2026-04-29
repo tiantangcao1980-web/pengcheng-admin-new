@@ -64,8 +64,11 @@ public class TenantInterceptor {
         });
     }
 
-    /** 不参与多租户过滤的表名（小写） */
+    /** 不参与多租户过滤的表名（小写）。
+     * 规则：sys_* 平台共享表、saas_* 计量/订阅表、industry_plugin/tenant_plugin 插件目录表、
+     * 以及不带 tenant_id 列的设备/日志表。*/
     private static final java.util.Set<String> IGNORED_TABLES = java.util.Set.of(
+            // 系统平台表
             "sys_role",
             "sys_menu",
             "sys_role_menu",
@@ -74,7 +77,19 @@ public class TenantInterceptor {
             "sys_dict_type",
             "sys_dict_data",
             "sys_config",
+            "sys_login_log",
+            "sys_oper_log",
+            // 租户元数据表（自身不过滤）
             "tenant",
+            // SaaS 计量/订阅/账单（平台级，不按租户再次过滤）
+            "saas_plan",
+            "saas_bill",
+            "saas_usage_metric",
+            "tenant_subscription",
+            // 插件目录表（全局共享）
+            "industry_plugin",
+            "tenant_plugin",
+            // 设备 / 会话表（不含 tenant_id 列）
             "user_login_device"
     );
 }
