@@ -39,19 +39,19 @@ jobs:
           node-version: '18'
 
       - name: Build Frontend
-        working-directory: pengcheng-admin/pengcheng-ui
+        working-directory: pengcheng-ui
         run: |
           npm ci
           npm run build
 
       - name: Copy Frontend to Backend Resources
         run: |
-          rm -rf pengcheng-admin/pengcheng-starter/src/main/resources/static/*
-          cp -r pengcheng-admin/pengcheng-ui/dist/* pengcheng-admin/pengcheng-starter/src/main/resources/static/
+          mkdir -p pengcheng-starter/src/main/resources/static
+          rm -rf pengcheng-starter/src/main/resources/static/*
+          cp -r pengcheng-ui/dist/* pengcheng-starter/src/main/resources/static/
 
       - name: Build Backend JAR
-        working-directory: pengcheng-admin
-        run: mvn clean package -DskipTests -B
+        run: mvn -T 4 clean package -DskipTests -B
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -74,7 +74,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: pengcheng-admin
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
