@@ -30,4 +30,16 @@ public class CommissionDetailDTO {
 
     /** 平台奖励 */
     private BigDecimal platformReward;
+
+    /** 下游经销商奖励（V17 新增） */
+    private BigDecimal dealerReward;
+
+    /** 驻场人员提成（V17 新增） */
+    private BigDecimal sitePersonReward;
+
+    /** 渠道专员提成（V17 新增） */
+    private BigDecimal channelSpecialistReward;
+
+    /** 渠道经理提成（V17 新增） */
+    private BigDecimal channelManagerReward;
 }

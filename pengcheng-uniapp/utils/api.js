@@ -3,6 +3,7 @@
  * 所有后端接口统一管理
  */
 import { get, post, put, del, upload } from './request.js'
+import { joinBaseUrl } from './config.js'
 
 // ==================== 认证相关 ====================
 
@@ -233,3 +234,66 @@ export const aiChat = (data) => post('/api/app/ai/chat', data)
 
 /** AI 营销文案生成 */
 export const aiCopywriting = (data) => post('/api/app/ai/copywriting', data)
+
+// ==================== 工单（TicketController /admin/ticket） ====================
+
+/** 创建工单 */
+export const createTicket = (data) => post('/admin/ticket', data)
+
+/** 分派工单 */
+export const assignTicket = (id, data) => post(`/admin/ticket/${id}/assign`, data)
+
+/** 开始处理工单 */
+export const startTicket = (id) => post(`/admin/ticket/${id}/start`)
+
+/** 回复工单 */
+export const replyTicket = (id, content) => post(`/admin/ticket/${id}/reply`, { content })
+
+/** 解决工单 */
+export const resolveTicket = (id, content) => post(`/admin/ticket/${id}/resolve`, { content })
+
+/** 关闭工单 */
+export const closeTicket = (id) => post(`/admin/ticket/${id}/close`)
+
+/** 取消工单 */
+export const cancelTicket = (id, content) => post(`/admin/ticket/${id}/cancel`, { content })
+
+/** 重开工单 */
+export const reopenTicket = (id, content) => post(`/admin/ticket/${id}/reopen`, { content })
+
+/** 我的未关闭工单 */
+export const myOpenTickets = (userId) => {
+  const params = userId ? { userId } : {}
+  return get('/admin/ticket/my-open', params)
+}
+
+/** 工单流转日志 */
+export const getTicketLogs = (id) => get(`/admin/ticket/${id}/logs`)
+
+// ==================== 报表文件 ====================
+
+/**
+ * 获取报表文件下载 URL（供 uni.downloadFile 使用）
+ * @param {string} type sales-performance | customer-analysis | commission-list | customer-followup-report
+ * @param {Object} params 额外查询参数
+ * @returns {string} 完整 URL
+ */
+export const downloadReportFile = (type, params = {}) => {
+  const query = { type, ...params }
+  const qs = Object.keys(query)
+    .filter(k => query[k] !== undefined && query[k] !== null && query[k] !== '')
+    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(query[k])}`)
+    .join('&')
+  const path = `/admin/report/file/download${qs ? `?${qs}` : ''}`
+  return joinBaseUrl(path)
+}
+
+// ==================== 协作办公申请（物料 / 用车） ====================
+
+// TODO: 后端 /admin/apply/material 接口未实现，待后端补齐
+/** 物料申请 */
+export const submitMaterialApply = (data) => post('/admin/apply/material', data)
+
+// TODO: 后端 /admin/apply/car 接口未实现，待后端补齐
+/** 用车申请 */
+export const submitCarApply = (data) => post('/admin/apply/car', data)

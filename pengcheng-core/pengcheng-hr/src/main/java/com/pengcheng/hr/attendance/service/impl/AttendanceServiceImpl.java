@@ -12,11 +12,14 @@ import com.pengcheng.hr.attendance.mapper.CompensateRequestMapper;
 import com.pengcheng.hr.attendance.mapper.LeaveRequestMapper;
 import com.pengcheng.hr.attendance.mapper.SignInRecordMapper;
 import com.pengcheng.hr.attendance.service.AttendanceService;
+import com.pengcheng.hr.attendance.service.GeoFenceCacheService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -34,6 +37,17 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final SignInRecordMapper signInRecordMapper;
     private final CompensateRequestMapper compensateRequestMapper;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * 地理围栏缓存服务（可选注入，便于既有测试以原 5 参构造函数 mock）。
+     * 单元测试中可通过 setter 注入 mock；为 null 时打卡默认按内勤处理。
+     */
+    @Autowired(required = false)
+    private GeoFenceCacheService geoFenceCacheService;
+
+    public void setGeoFenceCacheService(GeoFenceCacheService geoFenceCacheService) {
+        this.geoFenceCacheService = geoFenceCacheService;
+    }
 
     public static final int CLOCK_IN_NORMAL = 1;
     public static final int CLOCK_IN_LATE = 2;
@@ -53,6 +67,11 @@ public class AttendanceServiceImpl implements AttendanceService {
         record.setClockInTime(dto.getClockTime());
         record.setClockInLocation(dto.getLocation());
         record.setClockInStatus(status);
+        // V1.0 Sprint C: GPS / 照片 / 围栏外勤判定
+        if (dto.getLongitude() != null) record.setClockInLng(BigDecimal.valueOf(dto.getLongitude()));
+        if (dto.getLatitude() != null) record.setClockInLat(BigDecimal.valueOf(dto.getLatitude()));
+        if (dto.getPhotoUrl() != null) record.setClockInPhotoUrl(dto.getPhotoUrl());
+        record.setClockInFieldWork(resolveFieldWorkFlag(dto.getLongitude(), dto.getLatitude()));
         String changeType = record.getId() == null ? "create" : "update";
         if (record.getId() == null) attendanceRecordMapper.insert(record);
         else attendanceRecordMapper.updateById(record);
@@ -71,11 +90,27 @@ public class AttendanceServiceImpl implements AttendanceService {
         record.setClockOutTime(dto.getClockTime());
         record.setClockOutLocation(dto.getLocation());
         record.setClockOutStatus(status);
+        // V1.0 Sprint C: GPS / 照片 / 围栏外勤判定
+        if (dto.getLongitude() != null) record.setClockOutLng(BigDecimal.valueOf(dto.getLongitude()));
+        if (dto.getLatitude() != null) record.setClockOutLat(BigDecimal.valueOf(dto.getLatitude()));
+        if (dto.getPhotoUrl() != null) record.setClockOutPhotoUrl(dto.getPhotoUrl());
+        record.setClockOutFieldWork(resolveFieldWorkFlag(dto.getLongitude(), dto.getLatitude()));
         String changeType = record.getId() == null ? "create" : "update";
         if (record.getId() == null) attendanceRecordMapper.insert(record);
         else attendanceRecordMapper.updateById(record);
         eventPublisher.publishEvent(new DataChangeEvent(this, changeType, "attendance", record.getId()));
         return record.getId();
+    }
+
+    /**
+     * 依据围栏缓存判定是否外勤打卡。
+     * 缓存为空、未注入或缺少经纬度时默认按内勤(0)处理，避免在未配置围栏时把全员标外勤。
+     */
+    private int resolveFieldWorkFlag(Double lng, Double lat) {
+        if (geoFenceCacheService == null) return 0;
+        if (lng == null || lat == null) return 0;
+        if (geoFenceCacheService.snapshot().isEmpty()) return 0;
+        return geoFenceCacheService.isInsideFence(lng, lat) ? 0 : 1;
     }
 
     @Override

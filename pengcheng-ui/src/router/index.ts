@@ -62,6 +62,25 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '成交佣金', icon: 'CashOutline' }
       },
       {
+        path: 'realty/commission/approval',
+        name: 'RealtyCommissionApproval',
+        // 复用 CommissionManage：内部已含审批抽屉
+        component: () => import('@/views/realty/commission/CommissionManage.vue'),
+        meta: { title: '佣金审批', icon: 'CheckmarkDoneOutline' }
+      },
+      {
+        path: 'realty/pipeline',
+        name: 'RealtyPipeline',
+        component: () => import('@/views/realty/pipeline/PipelineKanban.vue'),
+        meta: { title: '销售漏斗', icon: 'FunnelOutline' }
+      },
+      {
+        path: 'realty/report-file',
+        name: 'RealtyReportFile',
+        component: () => import('@/views/realty/report-file/ReportFileCenter.vue'),
+        meta: { title: '报表下载', icon: 'DownloadOutline' }
+      },
+      {
         path: 'realty/payment',
         name: 'RealtyPayment',
         component: () => import('@/views/realty/payment/PaymentManage.vue'),
@@ -268,6 +287,12 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemUser',
         component: () => import('@/views/system/user/index.vue'),
         meta: { title: '用户管理', icon: 'PersonOutline' }
+      },
+      {
+        path: 'system/ticket',
+        name: 'SystemTicket',
+        component: () => import('@/views/system/ticket/TicketList.vue'),
+        meta: { title: '工单管理', icon: 'TicketOutline' }
       },
       {
         path: 'system/role',

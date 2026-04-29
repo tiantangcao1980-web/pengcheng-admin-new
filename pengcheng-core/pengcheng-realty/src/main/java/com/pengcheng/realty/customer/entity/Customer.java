@@ -35,6 +35,11 @@ public class Customer extends BaseEntity {
     private String customerName;
 
     /**
+     * 性别：M-男 F-女 O-其他（V17 新增）
+     */
+    private String gender;
+
+    /**
      * 联系方式（AES加密存储，通过 TypeHandler 透明加解密）
      */
     @TableField(typeHandler = PhoneEncryptTypeHandler.class)

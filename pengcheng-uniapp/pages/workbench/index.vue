@@ -107,6 +107,8 @@
 					{ name: '考勤打卡', icon: 'map', bgColor: '#FA8C16', url: '/pages/attendance/clock' },
 					{ name: '扫码签到', icon: 'scan', bgColor: '#13C2C2', url: '/pages/attendance/sign' },
 					{ name: '付款申请', icon: 'rmb-circle', bgColor: '#F5222D', url: '/pages/apply/list' },
+					{ name: '物料申请', icon: 'shopping-cart', bgColor: '#52C41A', url: '/pages/apply/material' },
+					{ name: '用车申请', icon: 'car', bgColor: '#FAAD14', url: '/pages/apply/car' },
 					{ name: '审批中心', icon: 'checkbox-mark', bgColor: '#EB2F96', url: '/pages/approval/list', badge: this.pendingApprovalCount },
 					{ name: 'AI助手', icon: 'integral', bgColor: '#2F54EB', url: '/pages/ai/chat' }
 				]

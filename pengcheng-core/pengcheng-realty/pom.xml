@@ -39,6 +39,12 @@
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-db</artifactId>
         </dependency>
+
+        <!-- EasyExcel: Excel/Word 报表生成（自带 poi-ooxml） -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-redis</artifactId>

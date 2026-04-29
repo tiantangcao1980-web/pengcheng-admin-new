@@ -33,7 +33,22 @@ public class CustomerDeal extends BaseEntity {
     private String roomNo;
 
     /**
-     * 成交金额
+     * 成交面积（平米，V17 新增）
+     */
+    private BigDecimal roomArea;
+
+    /**
+     * 成交总价（含税，V17 新增）
+     */
+    private BigDecimal totalPrice;
+
+    /**
+     * 成交订单号（业主签约号，V17 新增）
+     */
+    private String orderNo;
+
+    /**
+     * 成交金额（不含税净额，原字段兼容；佣金按 totalPrice 优先）
      */
     private BigDecimal dealAmount;
 

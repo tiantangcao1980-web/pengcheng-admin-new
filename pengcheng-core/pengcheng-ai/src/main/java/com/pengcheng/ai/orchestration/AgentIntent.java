@@ -9,5 +9,6 @@ public enum AgentIntent {
     COPYWRITING,
     APPROVAL,
     CUSTOMER,
+    REALTY,
     GENERAL
 }

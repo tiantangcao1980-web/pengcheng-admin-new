@@ -37,7 +37,7 @@
           <n-form-item label="状态">
             <n-select
               v-model:value="searchForm.status"
-              :options="statusOptions"
+              :options="CUSTOMER_STATUS_OPTIONS"
               clearable
               placeholder="请选择状态"
               style="width: 160px"
@@ -91,6 +91,7 @@
             <n-descriptions :column="2" label-placement="left" bordered>
               <n-descriptions-item label="报备编号">{{ detailRow?.reportNo || '-' }}</n-descriptions-item>
               <n-descriptions-item label="客户姓氏">{{ detailRow?.customerName || '-' }}</n-descriptions-item>
+              <n-descriptions-item label="性别">{{ detailRow?.gender ? CUSTOMER_GENDER_LABEL[detailRow.gender] : '-' }}</n-descriptions-item>
               <n-descriptions-item label="联系方式">{{ detailRow?.phoneMasked || '-' }}</n-descriptions-item>
               <n-descriptions-item label="带看人数">{{ detailRow?.visitCount || '-' }}</n-descriptions-item>
               <n-descriptions-item label="带看时间">{{ formatDateTime(detailRow?.visitTime) }}</n-descriptions-item>
@@ -153,8 +154,13 @@
         <n-form-item label="客户姓氏" path="customerName">
           <n-input v-model:value="createForm.customerName" placeholder="请输入客户姓氏" />
         </n-form-item>
+        <n-form-item label="性别" path="gender">
+          <n-radio-group v-model:value="createForm.gender">
+            <n-radio v-for="opt in CUSTOMER_GENDER_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio>
+          </n-radio-group>
+        </n-form-item>
         <n-form-item label="联系方式" path="phone">
-          <n-input v-model:value="createForm.phone" placeholder="请输入手机号" />
+          <n-input v-model:value="createForm.phone" placeholder="请输入手机号（提交后将脱敏前 3 后 4）" />
         </n-form-item>
         <n-form-item label="带看人数" path="visitCount">
           <n-input-number v-model:value="createForm.visitCount" :min="1" style="width: 100%" />
@@ -196,6 +202,8 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NIcon,
+  NRadio,
+  NRadioGroup,
   NSpace,
   NTag,
   useMessage,
@@ -205,10 +213,16 @@ import {
 } from 'naive-ui'
 import { AddOutline, EyeOutline, RefreshOutline, SearchOutline } from '@vicons/ionicons5'
 import {
+  CUSTOMER_GENDER_LABEL,
+  CUSTOMER_GENDER_OPTIONS,
+  CUSTOMER_STATUS_LABEL,
+  CUSTOMER_STATUS_OPTIONS,
+  CUSTOMER_STATUS_TAG_TYPE,
   realtyApi,
   type AllianceOption,
   type CustomerCreateParams,
   type CustomerDealRecord,
+  type CustomerGender,
   type CustomerRecord,
   type CustomerVisitRecord,
   type ProjectOption
@@ -247,12 +261,6 @@ const pagination = reactive({
   pageSizes: [10, 20, 50]
 })
 
-const statusOptions = [
-  { label: '已报备', value: 1 },
-  { label: '已到访', value: 2 },
-  { label: '已成交', value: 3 }
-]
-
 const detailVisible = ref(false)
 const detailRow = ref<CustomerRecord | null>(null)
 const aiScore = ref<number | null>(null)
@@ -264,6 +272,7 @@ const createFormRef = ref<FormInst | null>(null)
 const createForm = reactive<{
   projectIds: number[]
   customerName: string
+  gender: CustomerGender | null
   phone: string
   visitCount: number | null
   visitTime: number | null
@@ -273,6 +282,7 @@ const createForm = reactive<{
 }>({
   projectIds: [],
   customerName: '',
+  gender: null,
   phone: '',
   visitCount: 1,
   visitTime: Date.now(),
@@ -295,7 +305,14 @@ const createRules: FormRules = {
 const columns: DataTableColumns<CustomerRecord> = [
   { title: '报备编号', key: 'reportNo', width: 160 },
   { title: '客户姓氏', key: 'customerName', width: 120 },
-  { title: '联系方式', key: 'phoneMasked', width: 120 },
+  {
+    title: '性别',
+    key: 'gender',
+    width: 70,
+    render: row => renderGenderTag(row.gender)
+  },
+  // 始终显示脱敏手机号 phoneMasked，禁止展示明文 phone
+  { title: '联系方式', key: 'phoneMasked', width: 130, render: row => row.phoneMasked || '-' },
   { title: '带看人数', key: 'visitCount', width: 90 },
   {
     title: '带看时间',
@@ -414,7 +431,7 @@ function rowKey(row: CustomerRecord) {
 }
 
 function renderStatusTag(status?: number) {
-  const tagType: 'default' | 'info' | 'success' = status === 1 ? 'info' : status === 2 ? 'default' : 'success'
+  const tagType = (status != null && CUSTOMER_STATUS_TAG_TYPE[status]) || 'default'
   return h(
     NTag,
     {
@@ -426,10 +443,24 @@ function renderStatusTag(status?: number) {
 }
 
 function statusText(status?: number) {
-  if (status === 1) return '已报备'
-  if (status === 2) return '已到访'
-  if (status === 3) return '已成交'
-  return '-'
+  if (status == null) return '-'
+  return CUSTOMER_STATUS_LABEL[status] || '-'
+}
+
+function renderGenderTag(gender?: CustomerGender) {
+  if (!gender) {
+    return '-'
+  }
+  const tagType: 'info' | 'error' | 'default' = gender === 'M' ? 'info' : gender === 'F' ? 'error' : 'default'
+  return h(
+    NTag,
+    {
+      size: 'small',
+      type: tagType,
+      bordered: false
+    },
+    { default: () => CUSTOMER_GENDER_LABEL[gender] }
+  )
 }
 
 function formatDateTime(value?: string) {
@@ -547,6 +578,7 @@ const aiDealProbability = computed(() => {
 function resetCreateForm() {
   createForm.projectIds = []
   createForm.customerName = ''
+  createForm.gender = null
   createForm.phone = ''
   createForm.visitCount = 1
   createForm.visitTime = Date.now()
@@ -570,6 +602,7 @@ async function handleCreateSubmit() {
   const payload: CustomerCreateParams = {
     projectIds: createForm.projectIds,
     customerName: createForm.customerName,
+    gender: createForm.gender || undefined,
     phone: createForm.phone,
     visitCount: createForm.visitCount,
     visitTime: formatForApi(createForm.visitTime),
