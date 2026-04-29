@@ -1,5 +1,51 @@
 import { request } from '@/utils/request'
 
+// ========== TS 类型定义（J4 追加）==========
+export interface PmTask {
+  id: number
+  projectId: number
+  parentTaskId?: number | null
+  title: string
+  description?: string
+  status: string
+  priority?: number
+  progress: number
+  assigneeId?: number | null
+  startDate?: string | null
+  endDate?: string | null
+  dueDate?: string | null
+  estimatedHours?: number | null
+  actualHours?: number | null
+  tags?: string | null
+  children?: PmTask[]
+}
+
+export interface PmMilestone {
+  id: number
+  projectId: number
+  name: string
+  dueDate?: string | null
+  status: number
+  description?: string
+}
+
+export interface PmStatusColumn {
+  id: number
+  projectId: number
+  name: string
+  statusValue: string
+  sortOrder: number
+  isDone: number
+}
+
+export interface PmTaskDependency {
+  id: number
+  taskId: number
+  dependsOnTaskId: number
+  dependencyType?: string
+}
+// ==========================================
+
 /** 项目 */
 export const projectApi = {
   list: (params: { page?: number; size?: number; scope?: string; status?: number }) =>
@@ -67,3 +113,25 @@ export const projectMilestoneApi = {
   setComplete: (id: number, complete: boolean) =>
     request({ url: `/project/milestone/${id}/complete`, method: 'put', params: { complete } }),
 }
+
+// ========== J4 追加：甘特图/看板专用 API（最小补丁）==========
+/** 获取任务树（含依赖，用于甘特图） */
+export const listTasks = (projectId: number, params?: Record<string, any>) =>
+  request<{ data?: PmTask[] }>({ url: `/project/${projectId}/tasks/tree`, method: 'get', params })
+
+/** 拖拽修改任务时间 */
+export const updateTaskTime = (taskId: number, payload: { startDate: string; endDate: string }) =>
+  request({ url: `/project/task/${taskId}`, method: 'put', data: payload })
+
+/** 拖拽移动任务到看板列 */
+export const updateTaskStatus = (taskId: number, columnId: string) =>
+  request({ url: `/project/task/${taskId}/status`, method: 'put', params: { status: columnId } })
+
+/** 获取看板列定义 */
+export const listColumns = (projectId: number) =>
+  request<{ data?: PmStatusColumn[] }>({ url: `/project/${projectId}/status-columns`, method: 'get' })
+
+/** 获取里程碑（甘特图用） */
+export const listMilestones = (projectId: number) =>
+  request<{ data?: PmMilestone[] }>({ url: `/project/${projectId}/milestones`, method: 'get' })
+// =============================================================

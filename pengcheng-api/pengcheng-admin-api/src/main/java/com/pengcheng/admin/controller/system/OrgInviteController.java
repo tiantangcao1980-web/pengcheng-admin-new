@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 组织邀请控制器
+ * 组织邀请控制器（单一链接渠道，向后兼容原路径）
  */
 @RestController
 @RequestMapping("/sys/org/invite")

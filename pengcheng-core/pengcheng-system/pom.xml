@@ -14,7 +14,17 @@
     <name>MasterLife System</name>
     <description>系统核心模块 - RBAC权限管理、认证鉴权、系统配置</description>
 
+    <properties>
+        <jacoco.skip>false</jacoco.skip>
+    </properties>
+
     <dependencies>
+        <!-- 公共基础（TenantContextHolder / LocaleContextHolder / 错误码等） -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-common</artifactId>
+        </dependency>
+
         <!-- 基础设施模块 -->
         <dependency>
             <groupId>com.pengcheng</groupId>
@@ -49,6 +59,24 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- WebSocket（J3 云文档实时协作 DocCollabRoom/DocCollabWebSocketHandler 依赖） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- N5 可观测性：micrometer-core（V4MetricsCollector 使用 MeterRegistry/Counter/Timer） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+
+        <!-- spring-web（J3 DocCollab 用 spring-web 类型 + 给 OpenapiAuthInterceptor 用） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <!-- Lombok -->

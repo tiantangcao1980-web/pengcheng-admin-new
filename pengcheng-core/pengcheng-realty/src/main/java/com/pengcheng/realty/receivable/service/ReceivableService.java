@@ -19,8 +19,11 @@ import com.pengcheng.realty.receivable.mapper.ReceivableAlertMapper;
 import com.pengcheng.realty.receivable.mapper.ReceivablePlanMapper;
 import com.pengcheng.realty.receivable.mapper.ReceivableRecordMapper;
 import com.pengcheng.realty.receivable.vo.ReceivableStatsVO;
+import com.pengcheng.system.eventbus.event.DomainEvent;
+import com.pengcheng.system.eventbus.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -51,6 +54,9 @@ public class ReceivableService {
     private final ReceivableAlertMapper alertMapper;
     private final CustomerDealMapper customerDealMapper;
     private final ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private DomainEventPublisher domainEventPublisher;
 
     /** 即将到期告警阈值：未来 N 天内 */
     public static final int UPCOMING_WINDOW_DAYS = 3;
@@ -187,6 +193,7 @@ public class ReceivableService {
 
         eventPublisher.publishEvent(
                 new DataChangeEvent(this, "pay", "receivable_plan", plan.getId()));
+        if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("receivable.recorded", null, java.util.Map.of("id", record.getId(), "planId", String.valueOf(record.getPlanId()), "amount", record.getAmount().toPlainString(), "paidDate", record.getPaidDate().toString(), "payWay", String.valueOf(record.getPayWay()))));
         return record.getId();
     }
 
@@ -245,6 +252,7 @@ public class ReceivableService {
             if (now == ReceivablePlan.STATUS_OVERDUE) {
                 if (processOverdueAlert(p, today)) {
                     overdueNew++;
+                    if (domainEventPublisher != null) domainEventPublisher.publish(DomainEvent.of("receivable.overdue", null, java.util.Map.of("planId", String.valueOf(p.getId()), "dealId", String.valueOf(p.getDealId()), "dueDate", p.getDueDate().toString(), "dueAmount", p.getDueAmount().toPlainString())));
                 }
             } else if (p.getDueDate() != null
                     && !p.getDueDate().isBefore(today)

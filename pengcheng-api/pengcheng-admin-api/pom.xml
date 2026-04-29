@@ -74,6 +74,32 @@
             <groupId>com.pengcheng</groupId>
             <artifactId>pengcheng-ai</artifactId>
         </dependency>
+        <!-- V4 MVP 闭环② 日常办公 OA -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-oa</artifactId>
+        </dependency>
+        <!-- V4 MVP 闭环③ 客户管理 CRM -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-crm</artifactId>
+        </dependency>
+        <!-- V4 MVP Phase 2 财务闭环 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-finance</artifactId>
+        </dependency>
+        <!-- V4 MVP Phase 3 BI 自助分析 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-bi</artifactId>
+        </dependency>
+
+        <!-- V4 Phase 6 IM 集成 -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-integration</artifactId>
+        </dependency>
 
         <!-- WebSocket基础设施 -->
         <dependency>

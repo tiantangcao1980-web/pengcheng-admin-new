@@ -21,6 +21,12 @@
             <artifactId>pengcheng-system</artifactId>
         </dependency>
 
+        <!-- E5：WechatMpSubscribeSender 实现 push 模块的 ChannelSubscribeSender SPI -->
+        <dependency>
+            <groupId>com.pengcheng</groupId>
+            <artifactId>pengcheng-push</artifactId>
+        </dependency>
+
         <!-- Hutool -->
         <dependency>
             <groupId>cn.hutool</groupId>

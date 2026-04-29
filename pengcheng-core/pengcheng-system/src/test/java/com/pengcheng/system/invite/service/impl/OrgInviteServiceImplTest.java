@@ -7,6 +7,7 @@ import com.pengcheng.system.entity.SysUser;
 import com.pengcheng.system.entity.SysUserRole;
 import com.pengcheng.system.invite.entity.OrgInvite;
 import com.pengcheng.system.invite.mapper.OrgInviteMapper;
+import com.pengcheng.system.invite.sender.InviteChannelSender;
 import com.pengcheng.system.invite.support.OrgInviteStatus;
 import com.pengcheng.system.mapper.SysUserRoleMapper;
 import com.pengcheng.system.service.SysDeptService;
@@ -58,7 +59,8 @@ class OrgInviteServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = spy(new OrgInviteServiceImpl(deptService, roleService, userService, userRoleMapper));
+        // channelSenders 传空列表（无需 sender 的纯单元测试场景）
+        service = spy(new OrgInviteServiceImpl(deptService, roleService, userService, userRoleMapper, List.of()));
         ReflectionTestUtils.setField(service, "baseMapper", inviteMapper);
     }
 

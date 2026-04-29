@@ -33,6 +33,7 @@ server:
 
 pengcheng:
   feature:
+    tenant: false  # Phase 6 启用多租户行过滤；true 时激活 TenantInterceptor
     alipay:
       enabled: false
     wechat:
@@ -42,3 +43,27 @@ pengcheng:
         enabled: false
       pay:
         enabled: false
+  observability:
+    loki-url: ${LOKI_URL:http://loki:3100/loki/api/v1/push}
+
+# ==================== 可观测性配置 ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        spring.data.repository.invocations: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  health:
+    redis:
+      enabled: true

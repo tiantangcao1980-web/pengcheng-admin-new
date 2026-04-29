@@ -1,0 +1,25 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+    project: masterlife
+
+# ===================== Scrape 配置 =====================
+scrape_configs:
+
+  # MasterLife 应用指标
+  - job_name: 'masterlife-app'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['app:8080']
+        labels:
+          service: masterlife-app
+          env: production
+
+  # Prometheus 自身指标
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

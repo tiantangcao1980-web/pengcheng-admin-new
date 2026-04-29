@@ -8,7 +8,10 @@ import com.pengcheng.realty.customer.entity.Customer;
 import com.pengcheng.realty.customer.entity.CustomerDeal;
 import com.pengcheng.realty.customer.mapper.CustomerDealMapper;
 import com.pengcheng.realty.customer.mapper.RealtyCustomerMapper;
+import com.pengcheng.system.eventbus.event.DomainEvent;
+import com.pengcheng.system.eventbus.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,6 +27,9 @@ public class CustomerDealService {
 
     private final CustomerDealMapper customerDealMapper;
     private final RealtyCustomerMapper customerMapper;
+
+    @Autowired(required = false)
+    private DomainEventPublisher domainEventPublisher;
 
     /** 客户状态：已到访 */
     private static final int STATUS_VISITED = 2;
@@ -69,6 +75,7 @@ public class CustomerDealService {
         customer.setStatus(STATUS_DEAL);
         customerMapper.updateById(customer);
 
+        if (domainEventPublisher != null && Integer.valueOf(1).equals(deal.getSignStatus())) domainEventPublisher.publish(DomainEvent.of("deal.signed", null, java.util.Map.of("id", deal.getId(), "customerId", String.valueOf(deal.getCustomerId()), "roomNo", deal.getRoomNo(), "dealAmount", deal.getDealAmount().toPlainString(), "dealTime", deal.getDealTime().toString())));
         return deal.getId();
     }
 

@@ -27,6 +27,18 @@
 			}
 		},
 		{
+			"path": "pages/login/register-tenant",
+			"style": {
+				"navigationBarTitleText": "企业一分钟开通"
+			}
+		},
+		{
+			"path": "pages/login/invite-accept",
+			"style": {
+				"navigationBarTitleText": "接受企业邀请"
+			}
+		},
+		{
 			"path": "pages/chat/index",
 			"style": {
 				"navigationBarTitleText": "聊天",
@@ -184,6 +196,91 @@
 			"path": "pages/ai/chat",
 			"style": {
 				"navigationBarTitleText": "AI助手"
+			}
+		},
+		{
+			"path": "pages/ai/copilot",
+			"style": {
+				"navigationBarTitleText": "AI Copilot"
+			}
+		},
+		{
+			"path": "pages/oa/shift-detail",
+			"style": {
+				"navigationBarTitleText": "班次详情"
+			}
+		},
+		{
+			"path": "pages/oa/correction-apply",
+			"style": {
+				"navigationBarTitleText": "补卡申请"
+			}
+		},
+		{
+			"path": "pages/oa/approval-flow",
+			"style": {
+				"navigationBarTitleText": "审批流程"
+			}
+		},
+		{
+			"path": "pages/oa/daily-report",
+			"style": {
+				"navigationBarTitleText": "我的日报"
+			}
+		},
+		{
+			"path": "pages/lead/list",
+			"style": {
+				"navigationBarTitleText": "线索列表"
+			}
+		},
+		{
+			"path": "pages/lead/detail",
+			"style": {
+				"navigationBarTitleText": "线索详情"
+			}
+		},
+		{
+			"path": "pages/lead/assign",
+			"style": {
+				"navigationBarTitleText": "线索分配"
+			}
+		},
+		{
+			"path": "pages/lead/convert",
+			"style": {
+				"navigationBarTitleText": "转为客户"
+			}
+		},
+		{
+			"path": "pages/customer/follow-media",
+			"style": {
+				"navigationBarTitleText": "多媒体跟进"
+			}
+		},
+		{
+			"path": "pages/customer/ocr-import",
+			"style": {
+				"navigationBarTitleText": "名片扫描"
+			}
+		},
+		{
+			"path": "pages/realty/project-list",
+			"style": {
+				"navigationBarTitleText": "楼盘列表"
+			}
+		},
+		{
+			"path": "pages/realty/project-detail",
+			"style": {
+				"navigationBarTitleText": "楼盘详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/realty/unit-detail",
+			"style": {
+				"navigationBarTitleText": "房源详情"
 			}
 		}
 	],

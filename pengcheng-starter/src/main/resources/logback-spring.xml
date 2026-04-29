@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds">
+
+    <!-- ===================== 公共属性 ===================== -->
+    <springProperty name="APP_NAME"   source="spring.application.name" defaultValue="MasterLife"/>
+    <springProperty name="LOG_DIR"    source="logging.file.path"        defaultValue="logs"/>
+    <springProperty name="LOKI_URL"   source="pengcheng.observability.loki-url"
+                    defaultValue="http://loki:3100/loki/api/v1/push"/>
+
+    <!-- ===================== 控制台 Appender ===================== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!-- ANSI 彩色输出：级别着色 + 包路径缩写 -->
+            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ===================== 文件 Appender（按日期滚动） ===================== -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 每天一个文件，保留 30 天，总量上限 3GB -->
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>200MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ===================== Loki Appender（仅 prod profile 激活） ===================== -->
+    <springProfile name="prod">
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+            <!-- 每 1000ms 批量推送一次，最多 1000 条 -->
+            <batchMaxItems>1000</batchMaxItems>
+            <batchTimeoutMs>1000</batchTimeoutMs>
+            <!-- 发送失败时不阻塞主线程 -->
+            <sendQueueMaxBytes>41943040</sendQueueMaxBytes>
+            <http class="com.github.loki4j.logback.DefaultRfc5424MessageWriter">
+            </http>
+            <http>
+                <url>${LOKI_URL}</url>
+            </http>
+            <format>
+                <label>
+                    <pattern>application=${APP_NAME},level=%level,service=${APP_NAME}</pattern>
+                </label>
+                <message>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+                </message>
+                <sortByTime>true</sortByTime>
+            </format>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="LOKI"/>
+        </root>
+    </springProfile>
+
+    <!-- ===================== dev / test profile ===================== -->
+    <springProfile name="dev,test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+        <!-- 业务包 debug 级别 -->
+        <logger name="com.pengcheng" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </logger>
+    </springProfile>
+
+    <!-- ===================== 默认（无 profile）兜底 ===================== -->
+    <springProfile name="!dev &amp; !test &amp; !prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- ===================== 抑制噪音日志 ===================== -->
+    <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" level="WARN"/>
+    <logger name="com.zaxxer.hikari"           level="WARN"/>
+    <logger name="org.hibernate.validator"      level="WARN"/>
+    <logger name="org.apache.catalina"          level="WARN"/>
+    <logger name="springfox"                    level="WARN"/>
+
+</configuration>

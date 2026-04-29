@@ -4,9 +4,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.pengcheng.db.interceptor.DataPermissionInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.apache.ibatis.reflection.MetaObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,11 +21,22 @@ import java.time.LocalDateTime;
 public class MybatisPlusConfig implements MetaObjectHandler {
 
     /**
+     * 可选注入 TenantLineInnerInterceptor（仅 pengcheng.feature.tenant=true 时由
+     * {@code TenantInterceptor} 配置类注册该 Bean，否则为 null）。
+     */
+    @Autowired(required = false)
+    private TenantLineInnerInterceptor tenantLineInnerInterceptor;
+
+    /**
      * 分页插件
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor(DataPermissionInterceptor dataPermissionInterceptor) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // 0. 多租户行过滤（链首，仅 pengcheng.feature.tenant=true 时注入）
+        if (tenantLineInnerInterceptor != null) {
+            interceptor.addInnerInterceptor(tenantLineInnerInterceptor);
+        }
         // 1. 数据权限插件（先执行 SQL 包装）
         interceptor.addInnerInterceptor(dataPermissionInterceptor);
         // 2. 分页插件（最后执行，确保 LIMIT 在最外层）

@@ -15,11 +15,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 文档协同编辑 WebSocket 处理器
- * 实现多人实时编辑同步：光标位置、内容变更广播
+ * 文档协同编辑 WebSocket 处理器（旧版，已由 collab 子包的 Y.js Handler 替代）
+ * @deprecated 请使用 {@link com.pengcheng.system.doc.collab.ws.DocCollabWebSocketHandler}
  */
+@Deprecated
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class DocCollabWebSocketHandler implements WebSocketHandler {
 

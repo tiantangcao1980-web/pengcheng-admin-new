@@ -16,8 +16,13 @@
             "autoclose" : true,
             "delay" : 0
         },
-        /* 模块配置 */
-        "modules" : {},
+        /* 模块配置（V4.0 闭环⑤ - 原生能力声明：定位/扫码/相机/推送） */
+        "modules" : {
+            "Geolocation" : {},
+            "Camera" : {},
+            "Barcode" : {},
+            "Push" : {}
+        },
         /* 应用发布信息 */
         "distribute" : {
             /* android打包配置 */
@@ -37,13 +42,33 @@
                     "<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>",
                     "<uses-permission android:name=\"android.permission.FLASHLIGHT\"/>",
                     "<uses-feature android:name=\"android.hardware.camera\"/>",
-                    "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
+                    "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>",
+                    "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>",
+                    "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>",
+                    "<uses-permission android:name=\"android.permission.INTERNET\"/>"
                 ]
             },
             /* ios打包配置 */
-            "ios" : {},
-            /* SDK配置 */
-            "sdkConfigs" : {}
+            "ios" : {
+                "privacyDescription" : {
+                    "NSCameraUsageDescription" : "用于扫码、拍照名片识别、外勤拍照",
+                    "NSLocationWhenInUseUsageDescription" : "用于外勤签到、客户拜访定位",
+                    "NSLocationAlwaysAndWhenInUseUsageDescription" : "用于外勤签到、客户拜访定位",
+                    "NSPhotoLibraryUsageDescription" : "用于上传名片、文件附件",
+                    "NSPhotoLibraryAddUsageDescription" : "用于保存截图与扫码结果",
+                    "NSMicrophoneUsageDescription" : "用于会议、录音待办（可选）"
+                }
+            },
+            /* SDK配置（极光推送占位 - 用户填入 AppKey 后启用） */
+            "sdkConfigs" : {
+                "push" : {
+                    "jpush" : {
+                        "appkey" : "",
+                        "channel" : "developer-default"
+                    }
+                },
+                "maps" : {}
+            }
         }
     },
     /* 快应用特有相关 */

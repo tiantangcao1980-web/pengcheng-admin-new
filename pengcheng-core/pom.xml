@@ -23,5 +23,10 @@
         <module>pengcheng-hr</module>
         <module>pengcheng-realty</module>
         <module>pengcheng-ai</module>
+        <module>pengcheng-oa</module>
+        <module>pengcheng-crm</module>
+        <module>pengcheng-finance</module>
+        <module>pengcheng-bi</module>
+        <module>pengcheng-integration</module>
     </modules>
 </project>

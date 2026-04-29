@@ -174,6 +174,15 @@ export const addCustomerVisit = (data) => post('/api/app/customer/visit', data)
 /** 录入成交 */
 export const addCustomerDeal = (data) => post('/api/app/customer/deal', data)
 
+/**
+ * 名片 OCR 预览
+ *
+ * @param {string} imageBase64 Base64 编码的名片图片（可含 data URI 前缀）
+ * @returns {Promise<{data: import('./api').CustomerImportPreview}>} 识别结果预填 DTO
+ */
+export const ocrBusinessCardPreview = (imageBase64) =>
+  post('/api/admin/ocr/business-card/preview', { imageBase64 })
+
 // ==================== 考勤管理 ====================
 
 /** GPS 打卡 */

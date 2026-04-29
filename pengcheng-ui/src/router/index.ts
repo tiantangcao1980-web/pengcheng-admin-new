@@ -18,6 +18,13 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '注册', requiresAuth: false }
   },
   {
+    // V4 MVP 闭环① — 企业一分钟开通向导（公开页面，注册前可访问）
+    path: '/register/tenant',
+    name: 'RegisterTenant',
+    component: () => import('@/views/register/tenant.vue'),
+    meta: { title: '企业一分钟开通', requiresAuth: false }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layout/index.vue'),
@@ -28,6 +35,13 @@ const routes: RouteRecordRaw[] = [
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页', icon: 'HomeOutline' }
+      },
+      {
+        // I3 看板拖拽编辑器（受保护，requiresAuth 默认 true）
+        path: 'dashboard/designer',
+        name: 'DashboardDesigner',
+        component: () => import('@/views/dashboard/designer/index.vue'),
+        meta: { title: '看板编辑器', icon: 'GridOutline' }
       },
 
       // ========== 1. 房产业务 ==========
@@ -211,6 +225,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '云文档', icon: 'DocumentTextOutline' }
       },
       {
+        // OnlyOffice 在线编辑器（全屏独立页）
+        path: 'doc/:docId/onlyoffice',
+        name: 'DocOnlyOffice',
+        component: () => import('@/views/doc/onlyoffice/index.vue'),
+        meta: { title: 'OnlyOffice 在线编辑', hideInMenu: true }
+      },
+      {
         path: 'smart-table',
         name: 'SmartTable',
         component: () => import('@/views/smarttable/index.vue'),
@@ -221,6 +242,18 @@ const routes: RouteRecordRaw[] = [
         name: 'SmartTableTemplates',
         component: () => import('@/views/smarttable/templates.vue'),
         meta: { title: '表格模板管理', icon: 'CopyOutline' }
+      },
+      {
+        path: 'smart-table/market',
+        name: 'SmartTableMarket',
+        component: () => import('@/views/smarttable/market/index.vue'),
+        meta: { title: '模板市场', icon: 'StorefrontOutline' }
+      },
+      {
+        path: 'smart-table/market/review',
+        name: 'SmartTableMarketReview',
+        component: () => import('@/views/smarttable/market/components/ReviewPanel.vue'),
+        meta: { title: '模板审核', icon: 'ShieldCheckmarkOutline', roles: ['admin'] }
       },
       {
         path: 'todo',
@@ -240,6 +273,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/project/detail.vue'),
         meta: { title: '项目详情', hideInMenu: true }
       },
+      // ========== J4 新增：甘特图 & 看板（独立全屏页）==========
+      {
+        path: 'project/gantt',
+        name: 'ProjectGantt',
+        component: () => import('@/views/project/gantt/index.vue'),
+        meta: { title: '项目甘特图', hideInMenu: true }
+      },
+      {
+        path: 'project/kanban',
+        name: 'ProjectKanban',
+        component: () => import('@/views/project/kanban/index.vue'),
+        meta: { title: '项目看板', hideInMenu: true }
+      },
+      // =========================================================
 
       // ========== 4. 人事管理 ==========
       {

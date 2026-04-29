@@ -62,6 +62,9 @@
             <n-button size="small" @click="exportPdf">
               导出 PDF
             </n-button>
+            <n-button size="small" type="info" @click="router.push(`/doc/${currentDoc.id}/onlyoffice`)">
+              在线编辑
+            </n-button>
             <n-button size="small" @click="openVersionHistory">
               <template #icon><n-icon :component="TimeOutline" /></template>
               版本历史
@@ -135,6 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NButton, NIcon, NInput, NTag, NDivider, NEmpty, NModal,
   NForm, NFormItem, NRadioGroup, NRadio, NDataTable, useMessage
@@ -148,6 +152,7 @@ import { useUserStore } from '@/stores/user'
 
 const message = useMessage()
 const userStore = useUserStore()
+const router = useRouter()
 
 const spaces = ref<any[]>([])
 const currentSpaceId = ref<number | null>(null)
