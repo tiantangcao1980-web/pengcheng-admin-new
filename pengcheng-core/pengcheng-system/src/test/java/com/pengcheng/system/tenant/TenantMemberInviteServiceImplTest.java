@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
@@ -23,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
@@ -33,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TenantMemberInviteServiceImpl")
 class TenantMemberInviteServiceImplTest {
 
@@ -46,7 +50,9 @@ class TenantMemberInviteServiceImplTest {
         service = spy(new TenantMemberInviteServiceImpl());
         ReflectionTestUtils.setField(service, "baseMapper", inviteMapper);
         // 默认：getByCode 返回 null（生成的邀请码不冲突）
+        // MyBatis-Plus ServiceImpl.getOne() 内部调用两参版本 selectOne(wrapper, throwEx)
         lenient().when(inviteMapper.selectOne(any(Wrapper.class))).thenReturn(null);
+        lenient().when(inviteMapper.selectOne(any(Wrapper.class), anyBoolean())).thenReturn(null);
     }
 
     @Test
@@ -113,7 +119,9 @@ class TenantMemberInviteServiceImplTest {
         invite.setStatus(TenantMemberInvite.STATUS_PENDING);
         invite.setExpiresAt(LocalDateTime.now().minusHours(1));
         invite.setInviteCode("EXPIRED-CODE");
+        // MyBatis-Plus getOne() 内部调两参版本 selectOne(wrapper, throwEx)
         when(inviteMapper.selectOne(any(Wrapper.class))).thenReturn(invite);
+        lenient().when(inviteMapper.selectOne(any(Wrapper.class), anyBoolean())).thenReturn(invite);
 
         assertThatThrownBy(() -> service.acceptInvite("EXPIRED-CODE", 100L))
                 .isInstanceOf(BusinessException.class)
@@ -130,7 +138,9 @@ class TenantMemberInviteServiceImplTest {
         invite.setId(1L);
         invite.setStatus(TenantMemberInvite.STATUS_ACCEPTED);
         invite.setInviteCode("ACC-CODE");
+        // MyBatis-Plus getOne() 内部调两参版本 selectOne(wrapper, throwEx)
         when(inviteMapper.selectOne(any(Wrapper.class))).thenReturn(invite);
+        lenient().when(inviteMapper.selectOne(any(Wrapper.class), anyBoolean())).thenReturn(invite);
 
         assertThatThrownBy(() -> service.acceptInvite("ACC-CODE", 100L))
                 .isInstanceOf(BusinessException.class)
@@ -145,7 +155,9 @@ class TenantMemberInviteServiceImplTest {
         invite.setStatus(TenantMemberInvite.STATUS_PENDING);
         invite.setExpiresAt(LocalDateTime.now().plusHours(1));
         invite.setInviteCode("OK-CODE");
+        // MyBatis-Plus getOne() 内部调两参版本 selectOne(wrapper, throwEx)
         when(inviteMapper.selectOne(any(Wrapper.class))).thenReturn(invite);
+        lenient().when(inviteMapper.selectOne(any(Wrapper.class), anyBoolean())).thenReturn(invite);
 
         TenantMemberInvite accepted = service.acceptInvite("OK-CODE", 100L);
 

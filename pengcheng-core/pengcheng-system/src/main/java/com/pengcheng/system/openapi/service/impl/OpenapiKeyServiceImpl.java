@@ -31,6 +31,12 @@ import java.util.concurrent.ConcurrentMap;
 @RequiredArgsConstructor
 public class OpenapiKeyServiceImpl implements OpenapiKeyService {
 
+    private static final String AK_PREFIX = "ak_";
+    private static final String SK_PREFIX = "sk_";
+    private static final int AK_RANDOM_LEN = 32;
+    private static final int SK_RANDOM_LEN = 60;
+    private static final int DEFAULT_RATE_LIMIT = 60;
+
     private final OpenapiKeyMapper mapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -47,8 +53,8 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
 
     @Override
     public CreateKeyResult create(Long tenantId, Long createdBy, CreateKeyRequest req) {
-        String ak = "ak_" + RandomUtil.randomString(32);
-        String sk = "sk_" + RandomUtil.randomString(60);
+        String ak = AK_PREFIX + RandomUtil.randomString(AK_RANDOM_LEN);
+        String sk = generateSecretKey();
         String hash = SecureUtil.sha256(sk);
 
         OpenapiKey k = new OpenapiKey();
@@ -56,13 +62,13 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
         k.setName(req.getName());
         k.setAccessKey(ak);
         k.setSecretKeyHash(hash);
-        k.setSecretPreview(sk.substring(0, 6) + "..." + sk.substring(sk.length() - 4));
+        k.setSecretPreview(buildSecretPreview(sk));
         try {
             k.setScopes(req.getScopes() == null ? "[]" : objectMapper.writeValueAsString(req.getScopes()));
         } catch (Exception e) {
             k.setScopes("[]");
         }
-        k.setRateLimit(req.getRateLimit() != null ? req.getRateLimit() : 60);
+        k.setRateLimit(req.getRateLimit() != null ? req.getRateLimit() : DEFAULT_RATE_LIMIT);
         k.setExpiresAt(req.getExpiresAt());
         k.setEnabled(1);
         k.setCreatedBy(createdBy);
@@ -91,9 +97,9 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
         if (k == null) {
             throw new IllegalArgumentException("API Key 不存在: " + id);
         }
-        String newSk = "sk_" + RandomUtil.randomString(60);
+        String newSk = generateSecretKey();
         k.setSecretKeyHash(SecureUtil.sha256(newSk));
-        k.setSecretPreview(newSk.substring(0, 6) + "..." + newSk.substring(newSk.length() - 4));
+        k.setSecretPreview(buildSecretPreview(newSk));
         mapper.updateById(k);
         akCache.remove(k.getAccessKey());
         return CreateKeyResult.builder()
@@ -142,5 +148,13 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
         return mapper.selectList(new LambdaQueryWrapper<OpenapiKey>()
                 .eq(OpenapiKey::getTenantId, tenantId)
                 .orderByDesc(OpenapiKey::getCreateTime));
+    }
+
+    private static String generateSecretKey() {
+        return SK_PREFIX + RandomUtil.randomString(SK_RANDOM_LEN);
+    }
+
+    private static String buildSecretPreview(String sk) {
+        return sk.substring(0, 6) + "..." + sk.substring(sk.length() - 4);
     }
 }

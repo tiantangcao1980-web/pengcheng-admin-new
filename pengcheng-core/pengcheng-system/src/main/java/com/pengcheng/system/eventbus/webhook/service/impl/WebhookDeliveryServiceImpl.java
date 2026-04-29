@@ -27,6 +27,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WebhookDeliveryServiceImpl implements WebhookDeliveryService {
 
+    /** HTTP 投递超时（毫秒）。 */
+    private static final int HTTP_TIMEOUT_MS = 15_000;
+    /** 响应体最大保留字节数（超长截断）。 */
+    private static final int RESPONSE_BODY_MAX_LEN = 1000;
+    /** 最大重试次数；超过即标记 DEAD。 */
+    private static final int MAX_ATTEMPTS = 5;
+
     private final WebhookSubscriptionMapper subscriptionMapper;
     private final WebhookDeliveryMapper deliveryMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -102,11 +109,12 @@ public class WebhookDeliveryServiceImpl implements WebhookDeliveryService {
                 .header("X-Webhook-Signature", signature)
                 .header("X-Webhook-Event", d.getEventCode())
                 .header("X-Webhook-Event-Id", d.getEventId())
-                .timeout(15_000)
+                .timeout(HTTP_TIMEOUT_MS)
                 .execute()) {
             d.setResponseStatus(resp.getStatus());
             String body = resp.body();
-            d.setResponseBody(body != null && body.length() > 1000 ? body.substring(0, 1000) : body);
+            d.setResponseBody(body != null && body.length() > RESPONSE_BODY_MAX_LEN
+                    ? body.substring(0, RESPONSE_BODY_MAX_LEN) : body);
 
             if (resp.getStatus() >= 200 && resp.getStatus() < 300) {
                 d.setStatus(WebhookDelivery.STATUS_SUCCESS);
@@ -121,7 +129,7 @@ public class WebhookDeliveryServiceImpl implements WebhookDeliveryService {
         }
 
         // 失败：算下次重试或 DEAD
-        if (d.getAttemptCount() >= 5) {
+        if (d.getAttemptCount() >= MAX_ATTEMPTS) {
             d.setStatus(WebhookDelivery.STATUS_DEAD);
         } else {
             long backoff = WebhookDeliveryService.backoffSecondsByAttempt(d.getAttemptCount());

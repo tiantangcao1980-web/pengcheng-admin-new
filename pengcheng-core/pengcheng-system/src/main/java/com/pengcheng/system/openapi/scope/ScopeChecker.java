@@ -33,6 +33,8 @@ import java.util.Set;
 @Component
 public class ScopeChecker {
 
+    private static final String OPENAPI_PATH_PREFIX = "/openapi/v1/";
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -75,8 +77,8 @@ public class ScopeChecker {
     String inferScope(String method, String path) {
         if (path == null) return null;
         // /openapi/v1/{domain} 或 /openapi/v1/{domain}/{id}/...
-        if (!path.startsWith("/openapi/v1/")) return null;
-        String tail = path.substring("/openapi/v1/".length());
+        if (!path.startsWith(OPENAPI_PATH_PREFIX)) return null;
+        String tail = path.substring(OPENAPI_PATH_PREFIX.length());
         int slash = tail.indexOf('/');
         String domain = (slash > 0) ? tail.substring(0, slash) : tail;
         if (domain.isEmpty()) return null;

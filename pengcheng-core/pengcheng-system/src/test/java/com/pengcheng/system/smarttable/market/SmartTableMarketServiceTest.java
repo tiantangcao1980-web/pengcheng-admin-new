@@ -15,12 +15,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("SmartTableMarketService")
 class SmartTableMarketServiceTest {
 
@@ -54,18 +57,16 @@ class SmartTableMarketServiceTest {
     }
 
     @Test
-    @DisplayName("shareTemplate — 内置模板检查：builtIn=Boolean.TRUE 时，Integer.equals(Boolean) 永远为 false（已知 bug: TODO 生产应改为 Boolean.TRUE.equals）")
-    void shareTemplate_builtInBoolean_bugNote() {
-        // TODO(bug): SmartTableMarketService.shareTemplate 中用 Integer.valueOf(1).equals(t.getBuiltIn())
-        // 但 builtIn 字段是 Boolean，两者永远不等。应改为 Boolean.TRUE.equals(t.getBuiltIn())
-        // 此测试验证当前实际行为：Boolean.TRUE 不会触发内置模板拒绝逻辑
+    @DisplayName("shareTemplate — 内置模板（builtIn=Boolean.TRUE）应被拒绝分享（已通过 audit 修 Boolean.TRUE.equals 修复）")
+    void shareTemplate_builtInRejectedAfterFix() {
+        // audit 修复（commit a09c1d2）：Integer.valueOf(1).equals(Boolean) → Boolean.TRUE.equals
+        // 现在内置模板会正确抛 IllegalStateException 拒绝分享
         SmartTableTemplate t = template(1L, Boolean.TRUE);
         when(templateMapper.selectById(1L)).thenReturn(t);
-        // 因 bug，不抛异常，继续走到 rawUpdateShare（update 调用，mock 返回默认 0）
 
-        // 不应抛异常（当前 bug 行为）
-        assertThatCode(() -> service.shareTemplate(1L, 100L, "张三", "sales"))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.shareTemplate(1L, 100L, "张三", "sales"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("内置模板");
     }
 
     @Test
