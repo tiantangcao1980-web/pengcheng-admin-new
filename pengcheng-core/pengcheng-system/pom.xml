@@ -57,6 +57,12 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- N5 可观测性：micrometer-core（V4MetricsCollector 使用 MeterRegistry/Counter/Timer） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+
         <!-- spring-web（J3 DocCollab 用 spring-web 类型 + 给 OpenapiAuthInterceptor 用） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
