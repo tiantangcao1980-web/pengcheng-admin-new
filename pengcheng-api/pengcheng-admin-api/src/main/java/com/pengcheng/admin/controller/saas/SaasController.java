@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pengcheng.common.result.Result;
 import com.pengcheng.system.saas.entity.SaasBill;
 import com.pengcheng.system.saas.entity.SaasPlan;
+import com.pengcheng.system.saas.entity.SaasUsageMetric;
 import com.pengcheng.system.saas.entity.TenantSubscription;
 import com.pengcheng.system.saas.mapper.SaasPlanMapper;
+import com.pengcheng.system.saas.mapper.SaasUsageMetricMapper;
 import com.pengcheng.system.saas.service.SaasBillService;
 import com.pengcheng.system.saas.service.TenantSubscriptionService;
 import lombok.Data;
@@ -24,6 +26,7 @@ import java.util.List;
 public class SaasController {
 
     private final SaasPlanMapper planMapper;
+    private final SaasUsageMetricMapper usageMetricMapper;
     private final TenantSubscriptionService subscriptionService;
     private final SaasBillService billService;
 
@@ -74,11 +77,69 @@ public class SaasController {
         return Result.ok();
     }
 
+    /**
+     * 查询指定租户指定月份的用量，并与套餐限额对比。
+     * GET /admin/saas/usage?tenantId=&yyyymm=
+     */
+    @GetMapping("/usage")
+    @SaCheckPermission("saas:usage:query")
+    public Result<UsageResp> queryUsage(@RequestParam Long tenantId, @RequestParam String yyyymm) {
+        // 查活跃订阅 -> plan
+        TenantSubscription sub = subscriptionService.findActive(tenantId);
+        SaasPlan plan = sub != null ? planMapper.selectById(sub.getPlanId()) : null;
+
+        // 查三种计量
+        long apiCalls  = getMetricValue(tenantId, SaasUsageMetric.TYPE_API_CALLS,  yyyymm);
+        long storageGb = getMetricValue(tenantId, SaasUsageMetric.TYPE_STORAGE_GB, yyyymm);
+        long mau       = getMetricValue(tenantId, SaasUsageMetric.TYPE_MAU,        yyyymm);
+
+        UsageResp resp = new UsageResp();
+        resp.setTenantId(tenantId);
+        resp.setYyyymm(yyyymm);
+        resp.setApiCalls(apiCalls);
+        resp.setStorageGb(storageGb);
+        resp.setMau(mau);
+
+        if (plan != null) {
+            resp.setPlanCode(plan.getCode());
+            resp.setMaxApiCalls((long) plan.getMaxApiCallsPerMonth());
+            resp.setMaxStorageGb((long) plan.getMaxStorageGb());
+            resp.setMaxUsers((long) plan.getMaxUsers());
+            resp.setApiOverage(plan.getMaxApiCallsPerMonth() > 0 && apiCalls > plan.getMaxApiCallsPerMonth());
+            resp.setStorageOverage(plan.getMaxStorageGb() > 0 && storageGb > plan.getMaxStorageGb());
+        }
+        return Result.ok(resp);
+    }
+
+    private long getMetricValue(Long tenantId, String metricType, String yyyymm) {
+        SaasUsageMetric m = usageMetricMapper.selectOne(
+                new LambdaQueryWrapper<SaasUsageMetric>()
+                        .eq(SaasUsageMetric::getTenantId, tenantId)
+                        .eq(SaasUsageMetric::getMetricType, metricType)
+                        .eq(SaasUsageMetric::getPeriodYyyymm, yyyymm));
+        return m == null ? 0L : m.getValueNum();
+    }
+
     @Data
     public static class SubscribeReq {
         private Long tenantId;
         private Long planId;
         private Integer durationMonths;
         private Boolean autoRenew;
+    }
+
+    @Data
+    public static class UsageResp {
+        private Long tenantId;
+        private String yyyymm;
+        private String planCode;
+        private long apiCalls;
+        private long storageGb;
+        private long mau;
+        private Long maxApiCalls;
+        private Long maxStorageGb;
+        private Long maxUsers;
+        private Boolean apiOverage;
+        private Boolean storageOverage;
     }
 }

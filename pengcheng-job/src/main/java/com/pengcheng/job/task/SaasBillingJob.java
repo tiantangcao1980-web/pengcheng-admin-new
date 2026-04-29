@@ -48,4 +48,14 @@ public class SaasBillingJob {
             log.error("[SaasBillingJob] generateBills 异常", e);
         }
     }
+
+    /** 每天凌晨 02:30 将逾期未付账单标记为 OVERDUE（period_end < today-30d）。 */
+    @Scheduled(cron = "0 30 2 * * ?")
+    public void markOverdueBills() {
+        try {
+            billService.markOverdue();
+        } catch (Exception e) {
+            log.error("[SaasBillingJob] markOverdue 异常", e);
+        }
+    }
 }
