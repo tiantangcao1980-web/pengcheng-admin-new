@@ -83,24 +83,47 @@
           </n-form-item-gi>
         </n-grid>
 
-        <n-divider title-placement="left">佣金规则配置</n-divider>
-        <n-grid :cols="2" :x-gap="12">
-          <n-form-item-gi label="基础佣金比例">
-            <n-input-number v-model:value="ruleForm.baseRate" :min="0" :step="0.001" style="width: 100%" />
-          </n-form-item-gi>
-          <n-form-item-gi label="跳点规则(JSON)">
-            <n-input v-model:value="ruleForm.jumpPointRules" placeholder='例如: [{"min":0,"max":1000000,"rate":0.02}]' />
-          </n-form-item-gi>
-          <n-form-item-gi label="现金奖">
-            <n-input-number v-model:value="ruleForm.cashReward" :min="0" style="width: 100%" />
-          </n-form-item-gi>
-          <n-form-item-gi label="开单奖">
-            <n-input-number v-model:value="ruleForm.firstDealReward" :min="0" style="width: 100%" />
-          </n-form-item-gi>
-          <n-form-item-gi label="平台奖励">
-            <n-input-number v-model:value="ruleForm.platformReward" :min="0" style="width: 100%" />
-          </n-form-item-gi>
-        </n-grid>
+        <n-divider title-placement="left">
+          佣金规则配置
+          <n-button size="tiny" type="primary" ghost style="margin-left: 12px" @click="addRule">+ 添加规则</n-button>
+        </n-divider>
+        <div v-for="(rule, idx) in rules" :key="idx" class="rule-card">
+          <div class="rule-card-header">
+            <n-grid :cols="3" :x-gap="12">
+              <n-form-item-gi label="物业类型">
+                <n-select v-model:value="rule.propertyType" :options="propertyTypeOptions" placeholder="选择物业类型" />
+              </n-form-item-gi>
+              <n-form-item-gi label="客户籍贯">
+                <n-select v-model:value="rule.customerOrigin" :options="customerOriginOptions" placeholder="选择客户籍贯" />
+              </n-form-item-gi>
+              <n-form-item-gi v-if="rules.length > 1" label=" ">
+                <n-button size="small" type="error" ghost @click="removeRule(idx)">删除</n-button>
+              </n-form-item-gi>
+            </n-grid>
+          </div>
+          <n-grid :cols="2" :x-gap="12">
+            <n-form-item-gi label="基础佣金比例">
+              <n-input-number v-model:value="rule.baseRate" :min="0" :step="0.001" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi label="跳点规则(JSON)">
+              <n-input
+                v-model:value="rule.jumpPointRules"
+                type="textarea"
+                :autosize="{ minRows: 1, maxRows: 4 }"
+                placeholder='[{"min":0,"max":1000000,"rate":0.02}]'
+              />
+            </n-form-item-gi>
+            <n-form-item-gi label="现金奖">
+              <n-input-number v-model:value="rule.cashReward" :min="0" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi label="开单奖">
+              <n-input-number v-model:value="rule.firstDealReward" :min="0" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi label="平台奖励">
+              <n-input-number v-model:value="rule.platformReward" :min="0" style="width: 100%" />
+            </n-form-item-gi>
+          </n-grid>
+        </div>
       </n-form>
 
       <template #footer>
@@ -191,13 +214,61 @@ const formData = reactive<{
   description: ''
 })
 
-const ruleForm = reactive({
-  baseRate: null as number | null,
-  jumpPointRules: '',
-  cashReward: null as number | null,
-  firstDealReward: null as number | null,
-  platformReward: null as number | null
-})
+interface CommissionRuleForm {
+  propertyType: string
+  customerOrigin: string
+  baseRate: number | null
+  jumpPointRules: string
+  cashReward: number | null
+  firstDealReward: number | null
+  platformReward: number | null
+}
+
+const propertyTypeOptions = [
+  { label: '住宅', value: 'RESIDENTIAL' },
+  { label: '商铺', value: 'COMMERCIAL' },
+  { label: '公寓', value: 'APARTMENT' },
+  { label: '写字楼', value: 'OFFICE' },
+  { label: '别墅', value: 'VILLA' },
+  { label: '其他', value: 'OTHER' }
+]
+
+const customerOriginOptions = [
+  { label: '内地客户', value: 'DOMESTIC' },
+  { label: '境外客户', value: 'OVERSEAS' }
+]
+
+function emptyRule(): CommissionRuleForm {
+  return {
+    propertyType: 'RESIDENTIAL',
+    customerOrigin: 'DOMESTIC',
+    baseRate: null,
+    jumpPointRules: '',
+    cashReward: null,
+    firstDealReward: null,
+    platformReward: null
+  }
+}
+
+const rules = ref<CommissionRuleForm[]>([emptyRule()])
+
+function addRule() {
+  rules.value.push(emptyRule())
+}
+
+function removeRule(idx: number) {
+  if (rules.value.length > 1) {
+    rules.value.splice(idx, 1)
+  }
+}
+
+function isRuleFilled(r: CommissionRuleForm) {
+  return r.baseRate !== null
+    || (r.jumpPointRules && r.jumpPointRules.trim() !== '')
+    || r.cashReward !== null
+    || r.firstDealReward !== null
+    || r.platformReward !== null
+}
 
 const formRules: FormRules = {
   projectName: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -357,11 +428,7 @@ function resetForm() {
   formData.contactPhone = ''
   formData.description = ''
 
-  ruleForm.baseRate = null
-  ruleForm.jumpPointRules = ''
-  ruleForm.cashReward = null
-  ruleForm.firstDealReward = null
-  ruleForm.platformReward = null
+  rules.value = [emptyRule()]
 }
 
 function openCreateModal() {
@@ -388,13 +455,18 @@ async function openEditModal(row: ProjectRecord) {
   formData.description = row.description || ''
 
   try {
+    // V17：后端单接口仅返回当前生效的一条规则；多维度规则的"列出全部"留 V1.1 增强
     const activeRule = await realtyApi.activeProjectCommissionRule(row.id)
     if (activeRule) {
-      ruleForm.baseRate = activeRule.baseRate ?? null
-      ruleForm.jumpPointRules = activeRule.jumpPointRules || ''
-      ruleForm.cashReward = activeRule.cashReward ?? null
-      ruleForm.firstDealReward = activeRule.firstDealReward ?? null
-      ruleForm.platformReward = activeRule.platformReward ?? null
+      rules.value = [{
+        propertyType: (activeRule as any).propertyType || 'RESIDENTIAL',
+        customerOrigin: (activeRule as any).customerOrigin || 'DOMESTIC',
+        baseRate: activeRule.baseRate ?? null,
+        jumpPointRules: activeRule.jumpPointRules || '',
+        cashReward: activeRule.cashReward ?? null,
+        firstDealReward: activeRule.firstDealReward ?? null,
+        platformReward: activeRule.platformReward ?? null
+      }]
     }
   } catch {
     // ignore
@@ -432,15 +504,21 @@ async function submitProject() {
       message.success('项目创建成功')
     }
 
-    if (projectId && (ruleForm.baseRate !== null || ruleForm.jumpPointRules || ruleForm.cashReward !== null || ruleForm.firstDealReward !== null || ruleForm.platformReward !== null)) {
-      await realtyApi.saveProjectCommissionRule({
-        projectId,
-        baseRate: ruleForm.baseRate ?? undefined,
-        jumpPointRules: ruleForm.jumpPointRules || undefined,
-        cashReward: ruleForm.cashReward ?? undefined,
-        firstDealReward: ruleForm.firstDealReward ?? undefined,
-        platformReward: ruleForm.platformReward ?? undefined
-      })
+    if (projectId) {
+      // V17：批量保存所有"已填写"的佣金规则；空规则跳过
+      const filledRules = rules.value.filter(isRuleFilled)
+      for (const r of filledRules) {
+        await realtyApi.saveProjectCommissionRule({
+          projectId,
+          propertyType: r.propertyType,
+          customerOrigin: r.customerOrigin,
+          baseRate: r.baseRate ?? undefined,
+          jumpPointRules: r.jumpPointRules || undefined,
+          cashReward: r.cashReward ?? undefined,
+          firstDealReward: r.firstDealReward ?? undefined,
+          platformReward: r.platformReward ?? undefined
+        } as any)
+      }
     }
 
     modalVisible.value = false
@@ -462,5 +540,17 @@ onMounted(() => {
 
 .table-toolbar {
   margin-bottom: 16px;
+}
+
+.rule-card {
+  border: 1px solid var(--n-border-color, #e5e7eb);
+  border-radius: 6px;
+  padding: 12px 16px 4px;
+  margin-bottom: 12px;
+  background: var(--n-card-color, #fafafa);
+}
+
+.rule-card-header {
+  margin-bottom: 4px;
 }
 </style>

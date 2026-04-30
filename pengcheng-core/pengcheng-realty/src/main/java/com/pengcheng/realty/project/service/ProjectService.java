@@ -132,8 +132,12 @@ public class ProjectService {
             throw new IllegalArgumentException("项目ID不能为空");
         }
 
-        // 查找当前生效的规则
-        ProjectCommissionRule currentRule = getActiveCommissionRule(dto.getProjectId());
+        // V17：按 (projectId, propertyType, customerOrigin) 三维定位旧规则；缺省 RESIDENTIAL+DOMESTIC
+        String propertyType = dto.getPropertyType() == null ? "RESIDENTIAL" : dto.getPropertyType();
+        String customerOrigin = dto.getCustomerOrigin() == null ? "DOMESTIC" : dto.getCustomerOrigin();
+
+        // 查找该维度组合下当前生效的规则（精确匹配）
+        ProjectCommissionRule currentRule = querySingleRule(dto.getProjectId(), propertyType, customerOrigin);
 
         int newVersion = 1;
         if (currentRule != null) {
@@ -146,6 +150,8 @@ public class ProjectService {
         // 创建新版本规则，状态为待审批
         ProjectCommissionRule newRule = ProjectCommissionRule.builder()
                 .projectId(dto.getProjectId())
+                .propertyType(propertyType)
+                .customerOrigin(customerOrigin)
                 .baseRate(dto.getBaseRate())
                 .jumpPointRules(dto.getJumpPointRules())
                 .cashReward(dto.getCashReward())
