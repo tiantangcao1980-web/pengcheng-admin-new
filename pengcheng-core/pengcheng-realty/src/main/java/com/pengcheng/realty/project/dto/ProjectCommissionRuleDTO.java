@@ -19,6 +19,18 @@ public class ProjectCommissionRuleDTO {
     /** 项目ID（必填） */
     private Long projectId;
 
+    /**
+     * 物业类型（V17 多维度规则）：RESIDENTIAL/COMMERCIAL/APARTMENT/OFFICE/VILLA/OTHER
+     * 不传时默认 RESIDENTIAL
+     */
+    private String propertyType;
+
+    /**
+     * 客户籍贯（V17）：DOMESTIC内地 / OVERSEAS境外
+     * 不传时默认 DOMESTIC
+     */
+    private String customerOrigin;
+
     /** 基础佣金比例 */
     private BigDecimal baseRate;
 

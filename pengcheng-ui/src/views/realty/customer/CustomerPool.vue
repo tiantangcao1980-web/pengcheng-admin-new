@@ -221,7 +221,7 @@ async function loadPublicPool() {
   poolLoading.value = true
   try {
     const res: any = await request({
-      url: '/realty/customer/pool/public',
+      url: '/admin/customer/pool/public',
       method: 'get',
       params: {
         page: poolPagination.page,
@@ -241,7 +241,7 @@ async function loadPublicPool() {
 
 async function loadPoolStats() {
   try {
-    const res: any = await request({ url: '/realty/customer/pool/stats', method: 'get' })
+    const res: any = await request({ url: '/admin/customer/pool/stats', method: 'get' })
     poolStats.value = res?.data || res || { total: 0, todayNew: 0, todayClaimed: 0, todayRecycled: 0 }
   } catch {
     // 静默失败
@@ -250,7 +250,7 @@ async function loadPoolStats() {
 
 async function loadPoolConfig() {
   try {
-    const res: any = await request({ url: '/realty/customer/pool/config', method: 'get' })
+    const res: any = await request({ url: '/admin/customer/pool/config', method: 'get' })
     const config = res?.data || res || {}
     poolConfig.noFollowDays = config.noFollowDays || 7
     poolConfig.noVisitDays = config.noVisitDays || 30
@@ -265,8 +265,8 @@ async function savePoolConfig() {
   configSaving.value = true
   try {
     await request({
-      url: '/realty/customer/pool/config',
-      method: 'put',
+      url: '/admin/customer/pool/config',
+      method: 'post',
       data: poolConfig
     })
     message.success('配置已保存')
@@ -310,7 +310,7 @@ async function confirmClaim() {
   claiming.value = true
   try {
     await request({
-      url: '/realty/customer/pool/claim',
+      url: '/admin/customer/pool/claim',
       method: 'post',
       data: { customerIds: selectedRowKeys.value }
     })
