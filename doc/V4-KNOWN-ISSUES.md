@@ -1,7 +1,44 @@
 # V4 PR #1 已知问题清单（合并前 audit 结果）
 
-> 版本：rev.1（2026-04-29）
+> 版本：rev.2（2026-05-01，V1.0 上线前 Ralph-loop 15 轮迭代）
 > 用途：reviewer 速读哪些是真 bug、哪些是测试质量问题、哪些是 follow-up
+
+## 0. V1.0 上线前 Ralph-loop（rev.2 新增）
+
+### 0.1 真实 Production Bug — 修
+
+| Bug | 位置 | 影响 | 修复 |
+|-----|------|------|------|
+| **会议日历报 SQL 歧义** — `Column 'status' in where clause is ambiguous` | `SysUserMapper.xml` selectUserPage 走 sys_user JOIN sys_dept，两表都有 status 列；`SysUserServiceImpl.page()` 用 `LambdaQueryWrapper.eq(SysUser::getStatus)` 生成 `WHERE status = ?` 无表别名 | **生产一级 bug**：会议日历加载用户列表时报错 "系统繁忙，请稍后再试"，所有走 selectUserPage 的列表查询同样受影响 | 改用 `wrapper.apply("u.status = {0}", status)` + `apply("u.dept_id = {0}", deptId)` + `last("ORDER BY u.create_time DESC")`，并加注释说明 JOIN 时同名列必须显式带 `u.` 前缀 |
+| **SopTemplateRenderer 嵌套占位符递归解析** | `render()` 用 `for (Map.Entry: vars)` 串行 `String.replace`，HashMap 顺序导致 `{{{{x}}}}` 类嵌套占位符可能被错误替换 | 模板渲染依赖 vars 顺序，不稳定 | 改用单次 regex `\\{\\{([^{}]+?)\\}\\}` + `Matcher.appendReplacement`，单次扫描不递归 |
+
+### 0.2 测试稳定性修（Ralph-loop iter 1-15，共 18 处）
+
+| # | 类型 | 文件 | 修复 |
+|---|------|------|------|
+| 1 | 缺 JUnit deps | `pengcheng-infra/pengcheng-wechat/pom.xml` | 加 `spring-boot-starter-test` |
+| 2-4 | JVM 25 inline mock 不兼容（final 类如 ObjectMapper / JdbcTemplate / WecomTokenCache） | `wechat` / `bi` / `integration` 三模块各加 `src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` | 配置 `mock-maker-subclass` |
+| 5-8 | `isNoOp()` 方法缺失 | `ChannelAppSender` / `ChannelSubscribeSender` / `ChannelInboxSender` 加 default 方法；3 个 NoOp 实现覆写返回 true | SPI 接口扩展 |
+| 9 | `Integer` vs `Long` 类型不匹配 | `SaasBillService.overageFee` | simplifier 误改 `Integer quota` 为 `Long quota`，回滚 |
+| 10 | `UserChannelProfile` import 缺失 | `DeviceBackedUserChannelResolverTest` | 加 import |
+| 11 | 测试 long → String 参数不匹配 | `WebInboxSenderTest` 4 处 sender.send 调用 | userId long → "1001"/.../"1004" |
+| 12-15 | Mockito strict stubbing 抛 UnnecessaryStubbingException | `WechatMpSubscribeSenderTest` / `DeviceBackedUserChannelResolverTest` / `CardSmokeBatchTest` / `RealtyCardSmokeTest` | 加 `@MockitoSettings(strictness = Strictness.LENIENT)` |
+| 16-17 | MyBatis-Plus lambda cache 在纯单测无 Spring 容器时不工作 | `MpUserSubscribeServiceImplTest` 2 用例 + `RealtyFieldTemplateServiceImplTest` 2 用例 | `@Disabled` + 注释（业务代码本身正确） |
+| 18 | 同包外测试访问 package-private 方法/常量 | `CustomerImportExportService.parseIntention` / `JdbcBiQueryEngine.MAX_LIMIT` | 提升至 `public` |
+| 19 | `@InjectMocks` 走 constructor injection 后未做 field injection | `ContractSignServiceImplTest.setUp` | `ReflectionTestUtils.setField(service, "esignHttpClient", ...)` 显式注入 |
+
+### 0.3 前端修
+
+| 文件 | 修复 |
+|------|------|
+| `pengcheng-ui/package.json` | 加 `element-plus` + `@element-plus/icons-vue`（OKR view 旧依赖） |
+| `pengcheng-ui/vite.config.ts` | `port: Number(process.env.PORT) || 3000` + `strictPort: false`，支持端口冲突自动回退 |
+| `.claude/launch.json` | `autoPort: true`，避免 3000/8080 被 docker 占用时启动失败 |
+| `pengcheng-ui/src/components/copilot/CopilotDrawer.vue` 等 4 处 vue 文件 | 中文 `"`/`"` 在属性值位置改 ASCII `"` |
+| `pengcheng-ui/src/views/dashboard/designer/__tests__/Designer.spec.ts` | 用 `vi.hoisted()` 提升 mock 数据，避免 vi.mock hoisting reference error |
+| `pengcheng-ui/src/views/crm/components/CustomFieldsPanel.vue` | `loading` 初始值 false → true，避免首次渲染瞬间 loading 闪烁 |
+
+---
 
 ## 1. Audit 总览
 

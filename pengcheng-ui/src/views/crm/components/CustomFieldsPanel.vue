@@ -39,14 +39,14 @@ const props = withDefaults(
   { readonly: false }
 )
 
-const loading = ref(false)
+// 初始 true：组件挂载即开始加载，避免首次渲染瞬间 loading=false 闪烁
+const loading = ref(true)
 const saving = ref(false)
 const defs = ref<CustomFieldDef[]>([])
 const fieldValues = ref<Record<string, any>>({})
 const errors = ref<string[]>([])
 
 onMounted(async () => {
-  loading.value = true
   try {
     const [defRes, valRes]: [any, any] = await Promise.all([
       customFieldApi.listDefs(props.entityType),

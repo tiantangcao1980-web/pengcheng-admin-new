@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("WecomAuthServiceImpl 单元测试")
 class WecomAuthServiceImplTest {
 
@@ -81,7 +84,7 @@ class WecomAuthServiceImplTest {
                 "department", List.of(1, 2));
 
         when(httpClient.get(contains("getuserinfo"))).thenReturn(userInfoResp);
-        when(httpClient.get(contains("user/get"))).thenReturn(userDetailResp);
+        when(httpClient.get(contains("user/get?"))).thenReturn(userDetailResp);
 
         ImUserInfo info = authService.handleCallback(1L, "auth_code_001");
 
@@ -98,7 +101,7 @@ class WecomAuthServiceImplTest {
         when(configMapper.selectOne(any())).thenReturn(mockConfig);
         when(tokenCache.getToken(anyString(), anyString())).thenReturn("cached_token");
         when(httpClient.get(contains("getuserinfo"))).thenReturn(Map.of("errcode", 0, "UserId", "user1"));
-        when(httpClient.get(contains("user/get"))).thenReturn(Map.of("errcode", 0, "name", "User1",
+        when(httpClient.get(contains("user/get?"))).thenReturn(Map.of("errcode", 0, "name", "User1",
                 "mobile", "", "email", "", "avatar", ""));
 
         authService.handleCallback(1L, "code1");

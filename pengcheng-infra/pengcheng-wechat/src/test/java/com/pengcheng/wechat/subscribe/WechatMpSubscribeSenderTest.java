@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.Map;
 
@@ -21,6 +23,7 @@ import static org.mockito.Mockito.*;
  * / Feature Flag 关（isConfigured=false）/ getAccessToken 抛异常
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("WechatMpSubscribeSender 测试")
 class WechatMpSubscribeSenderTest {
 

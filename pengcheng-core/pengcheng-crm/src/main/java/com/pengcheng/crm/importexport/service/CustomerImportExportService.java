@@ -103,7 +103,8 @@ public class CustomerImportExportService {
         return result;
     }
 
-    static Integer parseIntention(String s) {
+    /** 意向等级解析（package-private 提升至 public 供同包外测试调用） */
+    public static Integer parseIntention(String s) {
         if (s == null || s.isBlank()) return 2;
         return switch (s.trim()) {
             case "高" -> 1;

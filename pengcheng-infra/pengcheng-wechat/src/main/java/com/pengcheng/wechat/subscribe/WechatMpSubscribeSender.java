@@ -1,5 +1,7 @@
 package com.pengcheng.wechat.subscribe;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.pengcheng.push.unified.ChannelSubscribeSender;
 import com.pengcheng.wechat.WechatMiniProgramService;
 import lombok.extern.slf4j.Slf4j;
@@ -85,29 +87,25 @@ public class WechatMpSubscribeSender implements ChannelSubscribeSender {
 
     private boolean doSend(String accessToken, String openId, String templateId,
                            Map<String, String> data, String page) {
-        String url = SUBSCRIBE_SEND_URL + "?access_token=" + accessToken;
-
         // 构建 data 字段：{"key": {"value": "xxx"}}
         if (data == null || data.isEmpty()) {
             throw new WechatTemplateRenderException("模板 data 不能为空: templateId=" + templateId);
         }
 
-        cn.hutool.json.JSONObject dataJson = new cn.hutool.json.JSONObject();
-        data.forEach((k, v) ->
-                dataJson.set(k, new cn.hutool.json.JSONObject().set("value", v))
-        );
+        JSONObject dataJson = new JSONObject();
+        data.forEach((k, v) -> dataJson.set(k, new JSONObject().set("value", v)));
 
-        cn.hutool.json.JSONObject body = new cn.hutool.json.JSONObject()
+        JSONObject body = new JSONObject()
                 .set("touser", openId)
                 .set("template_id", templateId)
                 .set("data", dataJson);
-
         if (page != null && !page.isBlank()) {
             body.set("page", page);
         }
 
+        String url = SUBSCRIBE_SEND_URL + "?access_token=" + accessToken;
         String response = httpClient.postJson(url, body.toString());
-        cn.hutool.json.JSONObject json = cn.hutool.json.JSONUtil.parseObj(response);
+        JSONObject json = JSONUtil.parseObj(response);
         int errcode = json.getInt("errcode", 0);
 
         if (errcode == 0) {

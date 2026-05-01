@@ -45,8 +45,8 @@ public class JdbcBiQueryEngine implements BiQueryEngine {
     private static final Set<String> ALLOWED_FORMULAS =
             Set.of("SUM", "AVG", "COUNT", "MAX", "MIN", "COUNT_DISTINCT");
 
-    /** limit 最大上限 */
-    static final int MAX_LIMIT = 10000;
+    /** limit 最大上限（package-private 提升至 public 供同 package 外测试调用） */
+    public static final int MAX_LIMIT = 10000;
 
     private final BiViewModelService viewModelService;
     private final JdbcTemplate jdbcTemplate;
