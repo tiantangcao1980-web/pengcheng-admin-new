@@ -63,11 +63,7 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
         k.setAccessKey(ak);
         k.setSecretKeyHash(hash);
         k.setSecretPreview(buildSecretPreview(sk));
-        try {
-            k.setScopes(req.getScopes() == null ? "[]" : objectMapper.writeValueAsString(req.getScopes()));
-        } catch (Exception e) {
-            k.setScopes("[]");
-        }
+        k.setScopes(serializeScopes(req.getScopes()));
         k.setRateLimit(req.getRateLimit() != null ? req.getRateLimit() : DEFAULT_RATE_LIMIT);
         k.setExpiresAt(req.getExpiresAt());
         k.setEnabled(1);
@@ -156,5 +152,16 @@ public class OpenapiKeyServiceImpl implements OpenapiKeyService {
 
     private static String buildSecretPreview(String sk) {
         return sk.substring(0, 6) + "..." + sk.substring(sk.length() - 4);
+    }
+
+    /** scopes 序列化为 JSON 数组；null/异常时回落为 "[]"（字段非空约束）。 */
+    private String serializeScopes(List<String> scopes) {
+        if (scopes == null) return "[]";
+        try {
+            return objectMapper.writeValueAsString(scopes);
+        } catch (Exception e) {
+            log.warn("[OpenapiKey] scopes 序列化失败，回落为 [] : {}", e.getMessage());
+            return "[]";
+        }
     }
 }

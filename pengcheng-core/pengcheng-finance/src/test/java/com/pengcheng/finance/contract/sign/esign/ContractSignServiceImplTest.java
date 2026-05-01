@@ -49,6 +49,10 @@ class ContractSignServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        // @InjectMocks 走 @RequiredArgsConstructor（3 mapper），不会对 @Autowired(required=false) 字段做 field-injection
+        // 显式补一次，让 esignHttpClient 在测试中可用（Feature Flag ON 场景）
+        ReflectionTestUtils.setField(service, "esignHttpClient", esignHttpClient);
+
         sampleContract = new Contract();
         sampleContract.setId(100L);
         sampleContract.setTitle("测试合同");

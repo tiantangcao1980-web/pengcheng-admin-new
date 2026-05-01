@@ -46,7 +46,7 @@ class WebInboxSenderTest {
     void send_success_returnsTrueAndCallsBridge() {
         // notificationService.createNotification 默认不抛异常（void 方法）
 
-        boolean result = sender.send(1001L, "审批通过", "您的请假申请已审批通过", "approval", 88L);
+        boolean result = sender.send("1001", "审批通过", "您的请假申请已审批通过", "approval", 88L);
 
         assertThat(result).isTrue();
 
@@ -73,7 +73,7 @@ class WebInboxSenderTest {
         doThrow(new RuntimeException("DB 连接超时"))
                 .when(notificationService).createNotification(any());
 
-        boolean result = sender.send(1002L, "标题", "内容", "customer", 99L);
+        boolean result = sender.send("1002", "标题", "内容", "customer", 99L);
 
         assertThat(result).isFalse();
         verifyNoInteractions(webSocketBridge);
@@ -86,7 +86,7 @@ class WebInboxSenderTest {
     void send_nullBridge_returnsTrueWithoutWebSocket() {
         WebInboxSender senderWithoutBridge = new WebInboxSender(notificationService, null);
 
-        boolean result = senderWithoutBridge.send(1003L, "新审批", "待处理审批", "leave", 77L);
+        boolean result = senderWithoutBridge.send("1003", "新审批", "待处理审批", "leave", 77L);
 
         assertThat(result).isTrue();
         verify(notificationService, times(1)).createNotification(any());
@@ -100,7 +100,7 @@ class WebInboxSenderTest {
         doThrow(new RuntimeException("WebSocket session closed"))
                 .when(webSocketBridge).sendNoticeIfOnline(anyLong(), anyString(), anyString());
 
-        boolean result = sender.send(1004L, "标题", "内容", "approval", 55L);
+        boolean result = sender.send("1004", "标题", "内容", "approval", 55L);
 
         // 落库成功，WebSocket 推送失败不影响返回值
         assertThat(result).isTrue();

@@ -14,6 +14,14 @@ public interface ChannelAppSender {
     String channelCode();
 
     /**
+     * 是否为兜底 NoOp 实现（无真实推送能力）。
+     * 真实渠道返回 false；NoOpChannelAppSender 覆写返回 true。
+     */
+    default boolean isNoOp() {
+        return false;
+    }
+
+    /**
      * 发送 APP 通知。
      *
      * @param userId  接收用户 ID（数字字符串）

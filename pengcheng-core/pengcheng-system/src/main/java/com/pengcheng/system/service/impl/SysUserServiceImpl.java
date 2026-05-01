@@ -46,10 +46,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public PageResult<SysUser> page(Integer page, Integer pageSize, String username, Integer status, String userType, Long deptId, Long postId) {
         Page<SysUser> pageParam = new Page<>(page, pageSize);
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        // 注意：因 selectUserPage XML 走了 sys_user u LEFT JOIN sys_dept d，且 sys_user 与 sys_dept 都有 status 列，
+        // 此处所有可能在 sys_dept 重名的列必须显式带 u. 表别名（status / dept_id / create_time），
+        // 否则 MySQL 抛 'status in where clause is ambiguous'。
         wrapper.like(StringUtils.hasText(username), SysUser::getUsername, username)
-                .eq(status != null, SysUser::getStatus, status)
+                .apply(status != null, "u.status = {0}", status)
                 .eq(StringUtils.hasText(userType), SysUser::getUserType, userType)
-                .eq(deptId != null, SysUser::getDeptId, deptId);
+                .apply(deptId != null, "u.dept_id = {0}", deptId);
 
         if (postId != null) {
             List<Long> userIds = userPostMapper.selectUserIdsByPostId(postId);
@@ -59,7 +62,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             wrapper.apply("u.id IN ({0})", userIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
         }
 
-        wrapper.orderByDesc(SysUser::getCreateTime);
+        wrapper.last("ORDER BY u.create_time DESC");
 
         // 切换到自定义 @DataScope 拦截器
         IPage<SysUser> result = baseMapper.selectUserPage(pageParam, wrapper);

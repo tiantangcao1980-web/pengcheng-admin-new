@@ -18,6 +18,11 @@ public class NoOpChannelAppSender implements ChannelAppSender {
     }
 
     @Override
+    public boolean isNoOp() {
+        return true;
+    }
+
+    @Override
     public boolean sendToUser(String userId, String title, String content, Map<String, String> extras) {
         log.warn("[NoOpAppSender] APP 推送被丢弃（无真实 sender）：userId={}, title={}", userId, title);
         return false;

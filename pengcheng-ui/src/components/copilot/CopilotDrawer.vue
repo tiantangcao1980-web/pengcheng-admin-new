@@ -13,27 +13,27 @@
           <button class="copilot-icon-btn" @click="closeCopilot">×</button>
         </div>
 
-        <div class=”copilot-drawer-body” ref=”bodyRef”>
-          <div v-if=”copilotState.messages.length === 0” class=”copilot-empty”>
+        <div class="copilot-drawer-body" ref="bodyRef">
+          <div v-if="copilotState.messages.length === 0" class="copilot-empty">
             您可以这样问我：<br />
             “这个月我跟了几个客户？”<br />
             “帮我写条给王总的回访话术。”<br />
             “今天我要做什么？”
           </div>
           <MessageBubble
-            v-for=”msg in copilotState.messages”
-            :key=”msg.id”
-            :msg=”msg”
-            @confirm=”onConfirmAction”
-            @cancel=”onCancelAction”
+            v-for="msg in copilotState.messages"
+            :key="msg.id"
+            :msg="msg"
+            @confirm="onConfirmAction"
+            @cancel="onCancelAction"
           />
 
           <!-- H2：AI 提议动作时弹出二次确认对话框 -->
           <ToolConfirmDialog
-            v-if=”copilotState.pendingProposal != null”
-            :proposal=”copilotState.pendingProposal”
-            @done=”onProposalDone”
-            @cancel=”onProposalCancel”
+            v-if="copilotState.pendingProposal != null"
+            :proposal="copilotState.pendingProposal"
+            @done="onProposalDone"
+            @cancel="onProposalCancel"
           />
         </div>
 

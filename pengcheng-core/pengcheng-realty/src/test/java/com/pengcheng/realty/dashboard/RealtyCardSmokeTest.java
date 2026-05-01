@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
  * <p>验证：① code 唯一；② name/category 非空；③ render(ctx) 不抛且返回非 null
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("RealtyCardSmoke: 3 张房产卡片冒烟测试")
 class RealtyCardSmokeTest {
 

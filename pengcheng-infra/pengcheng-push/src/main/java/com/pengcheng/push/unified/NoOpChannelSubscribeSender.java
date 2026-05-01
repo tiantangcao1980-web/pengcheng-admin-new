@@ -11,6 +11,11 @@ import java.util.Map;
 public class NoOpChannelSubscribeSender implements ChannelSubscribeSender {
 
     @Override
+    public boolean isNoOp() {
+        return true;
+    }
+
+    @Override
     public boolean send(String openId, String templateId, Map<String, String> data, String page) {
         log.warn("[NoOpSubscribeSender] 订阅消息被丢弃（无真实 sender）：openId={}, template={}", openId, templateId);
         return false;

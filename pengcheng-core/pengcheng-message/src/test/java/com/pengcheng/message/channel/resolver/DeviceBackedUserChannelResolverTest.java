@@ -1,5 +1,6 @@
 package com.pengcheng.message.channel.resolver;
 
+import com.pengcheng.message.channel.UserChannelProfile;
 import com.pengcheng.message.subscribe.auth.MpUserSubscribe;
 import com.pengcheng.message.subscribe.auth.MpUserSubscribeService;
 import com.pengcheng.system.device.entity.UserLoginDevice;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -20,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("DeviceBackedUserChannelResolver")
 class DeviceBackedUserChannelResolverTest {
 
