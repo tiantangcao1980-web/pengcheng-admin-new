@@ -41,3 +41,6 @@ uploads/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Claude Code 调度锁文件
+.claude/scheduled_tasks.lock

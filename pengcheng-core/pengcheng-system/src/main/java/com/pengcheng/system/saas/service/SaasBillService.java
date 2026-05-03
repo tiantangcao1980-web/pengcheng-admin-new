@@ -131,25 +131,23 @@ public class SaasBillService {
      * 计算超量费用：API_CALLS + STORAGE_GB。
      */
     private BigDecimal calcOverage(Long tenantId, String yyyymm, SaasPlan plan) {
-        BigDecimal overage = BigDecimal.ZERO;
+        BigDecimal apiFee = overageFee(
+                getUsageValue(tenantId, SaasUsageMetric.TYPE_API_CALLS, yyyymm),
+                plan.getMaxApiCallsPerMonth(),
+                API_OVERAGE_UNIT);
+        BigDecimal storageFee = overageFee(
+                getUsageValue(tenantId, SaasUsageMetric.TYPE_STORAGE_GB, yyyymm),
+                plan.getMaxStorageGb(),
+                STORAGE_OVERAGE_UNIT);
+        return apiFee.add(storageFee);
+    }
 
-        // API 超量
-        long apiUsage = getUsageValue(tenantId, SaasUsageMetric.TYPE_API_CALLS, yyyymm);
-        long maxApi = plan.getMaxApiCallsPerMonth() == null ? 0 : plan.getMaxApiCallsPerMonth();
-        if (maxApi > 0 && apiUsage > maxApi) {
-            long apiOver = apiUsage - maxApi;
-            overage = overage.add(BigDecimal.valueOf(apiOver).multiply(API_OVERAGE_UNIT));
+    /** 单项超量费 = max(usage - quota, 0) * unitPrice；quota 为 null 或 ≤0 时不收费。 */
+    private static BigDecimal overageFee(long usage, Integer quota, BigDecimal unitPrice) {
+        if (quota == null || quota <= 0 || usage <= quota) {
+            return BigDecimal.ZERO;
         }
-
-        // 存储超量
-        long storageUsage = getUsageValue(tenantId, SaasUsageMetric.TYPE_STORAGE_GB, yyyymm);
-        long maxStorage = plan.getMaxStorageGb() == null ? 0 : plan.getMaxStorageGb();
-        if (maxStorage > 0 && storageUsage > maxStorage) {
-            long storageOver = storageUsage - maxStorage;
-            overage = overage.add(BigDecimal.valueOf(storageOver).multiply(STORAGE_OVERAGE_UNIT));
-        }
-
-        return overage;
+        return BigDecimal.valueOf(usage - quota).multiply(unitPrice);
     }
 
     /**

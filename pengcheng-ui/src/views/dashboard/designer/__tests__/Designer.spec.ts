@@ -3,21 +3,22 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 
 // ─── Mock API 层 ──────────────────────────────────────────────────────────────
-
-const mockCards = [
-  { code: 'daily_sales', name: '今日销售额', category: '销售', suggestedChart: 'number', defaultCols: 4, defaultRows: 3 },
-  { code: 'monthly_trend', name: '月度趋势', category: '销售', suggestedChart: 'line', defaultCols: 6, defaultRows: 4 },
-  { code: 'deal_funnel', name: '成交漏斗', category: '客户', suggestedChart: 'funnel', defaultCols: 4, defaultRows: 4 }
-]
-
-const mockLayout = {
-  id: 1,
-  ownerType: 'user' as const,
-  layoutJson: [
-    { cardCode: 'daily_sales', x: 0, y: 0, w: 4, h: 3 }
+// 使用 vi.hoisted 让常量也被提升到 vi.mock 调用之前，避免 ReferenceError
+const { mockCards, mockLayout } = vi.hoisted(() => ({
+  mockCards: [
+    { code: 'daily_sales', name: '今日销售额', category: '销售', suggestedChart: 'number', defaultCols: 4, defaultRows: 3 },
+    { code: 'monthly_trend', name: '月度趋势', category: '销售', suggestedChart: 'line', defaultCols: 6, defaultRows: 4 },
+    { code: 'deal_funnel', name: '成交漏斗', category: '客户', suggestedChart: 'funnel', defaultCols: 4, defaultRows: 4 }
   ],
-  isDefault: true
-}
+  mockLayout: {
+    id: 1,
+    ownerType: 'user' as const,
+    layoutJson: [
+      { cardCode: 'daily_sales', x: 0, y: 0, w: 4, h: 3 }
+    ],
+    isDefault: true
+  }
+}))
 
 vi.mock('@/api/dashboardCard', () => ({
   listCards: vi.fn().mockResolvedValue(mockCards),

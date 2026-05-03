@@ -19,4 +19,12 @@ public interface ChannelInboxSender {
      * @return 是否落库成功
      */
     boolean send(String userId, String title, String content, String bizType, Long bizId);
+
+    /**
+     * 是否为兜底 NoOp 实现（无真实 inbox 落库能力）。
+     * 真实渠道返回 false；NoOp 实现覆写返回 true。
+     */
+    default boolean isNoOp() {
+        return false;
+    }
 }

@@ -22,4 +22,12 @@ public interface ChannelSubscribeSender {
      * @return 是否成功（调用微信接口返回 errcode == 0）
      */
     boolean send(String openId, String templateId, Map<String, String> data, String page);
+
+    /**
+     * 是否为兜底 NoOp 实现（无真实推送能力）。
+     * 真实渠道返回 false；NoOp 实现覆写返回 true。
+     */
+    default boolean isNoOp() {
+        return false;
+    }
 }

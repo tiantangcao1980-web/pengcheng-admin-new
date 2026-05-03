@@ -15,7 +15,8 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
-    port: 3000,
+    port: Number(process.env.PORT) || 3000,
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

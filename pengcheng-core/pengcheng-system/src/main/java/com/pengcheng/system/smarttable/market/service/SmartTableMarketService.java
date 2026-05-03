@@ -47,24 +47,17 @@ public class SmartTableMarketService {
     public void shareTemplate(Long templateId, Long authorUserId, String authorName, String tags) {
         SmartTableTemplate t = templateMapper.selectById(templateId);
         if (t == null) throw new IllegalArgumentException("模板不存在");
-        // 内置模板不可改 share_status（修复：SmartTableTemplate.builtIn 是 Boolean，
-        // 原代码 Integer.valueOf(1).equals(Boolean) 永远 false 导致内置模板保护失效）
+        // 内置模板不可改 share_status（builtIn 是 Boolean）
         if (Boolean.TRUE.equals(t.getBuiltIn())) {
             throw new IllegalStateException("内置模板已为公开状态，无需分享");
         }
-        // 用反射或扩展字段设值 — 实际通过 update SQL 比较稳，避免 entity 字段同步问题
-        templateMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<SmartTableTemplate>()
-                .eq(SmartTableTemplate::getId, templateId)
-                .set(t.getName() != null ? null : null, null) // workaround：使用 SQL 直接更新更直接
-        );
-        // 用更直观的 update SQL（直接写）
         rawUpdateShare(templateId, STATUS_REVIEWING, authorUserId, authorName, tags);
     }
 
     /** 管理员审核：通过 → PUBLIC，不通过 → REJECTED。 */
     @Transactional
     public void approveSharing(Long templateId, boolean approve) {
-        rawUpdateShareStatus(templateId, approve ? STATUS_PUBLIC : STATUS_REJECTED);
+        rawUpdateShare(templateId, approve ? STATUS_PUBLIC : STATUS_REJECTED, null, null, null);
     }
 
     /** 用户从模板创建表后调用 — 写下载记录 + 原子 +1 download_count。 */
@@ -146,17 +139,16 @@ public class SmartTableMarketService {
 
     private void rawUpdateShare(Long templateId, String status, Long authorUserId,
                                   String authorName, String tags) {
+        StringBuilder sql = new StringBuilder("share_status = '").append(escape(status)).append("'");
+        if (authorUserId != null) sql.append(", author_user_id = ").append(authorUserId);
+        if (authorName != null)   sql.append(", author_name = '").append(escape(authorName)).append("'");
+        if (tags != null)         sql.append(", tags = '").append(escape(tags)).append("'");
         templateMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<SmartTableTemplate>()
                 .eq(SmartTableTemplate::getId, templateId)
-                .setSql("share_status = '" + status.replace("'", "''") + "'"
-                        + (authorUserId != null ? ", author_user_id = " + authorUserId : "")
-                        + (authorName != null ? ", author_name = '" + authorName.replace("'", "''") + "'" : "")
-                        + (tags != null ? ", tags = '" + tags.replace("'", "''") + "'" : "")));
+                .setSql(sql.toString()));
     }
 
-    private void rawUpdateShareStatus(Long templateId, String status) {
-        templateMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<SmartTableTemplate>()
-                .eq(SmartTableTemplate::getId, templateId)
-                .setSql("share_status = '" + status.replace("'", "''") + "'"));
+    private static String escape(String s) {
+        return s.replace("'", "''");
     }
 }
